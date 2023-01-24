@@ -29,12 +29,12 @@ class Transistor:
         if self.time_is_on_deg == 0 or self.time_is_on_deg == 0.0:
             return 0
         elif self.time_turned_on_deg < self.time_turned_off_deg:
-            if self.time_turned_on_deg <= currentTime <= self.time_turned_off_deg:
+            if self.time_turned_on_deg <= currentTime < self.time_turned_off_deg:
                 return 1
             else:
                 return 0
         elif self.time_turned_on_deg > self.time_turned_off_deg:
-            if self.time_turned_on_deg > currentTime > self.time_turned_off_deg:
+            if self.time_turned_on_deg > currentTime >= self.time_turned_off_deg:
                 return 0
             else:
                 return 1
@@ -150,7 +150,7 @@ def getChopperList(numOfChoppers, time_diff_deg, time_is_on_deg,
                                                   time_is_on_deg))
                 choppersList.insert(0, Transistor("chopper", "CP_BL_" + str(idxB),
                                                   (
-                                                              idxB - 1) * time_diff_deg + 180 + time_is_on_deg + pauseTime_deg if int(
+                                                          idxB - 1) * time_diff_deg + 180 + time_is_on_deg + pauseTime_deg if int(
                                                       time_is_on_deg) != 0
                                                   else (idxB - 1) * time_diff_deg + 180,
                                                   360 - time_is_on_deg - pauseTime_deg * 2 if int(
@@ -279,11 +279,19 @@ def exportDictToText_Vertical(mydict, textFileName, numOfChopper=None, factor_a=
 
 def getTimeONOFF(transistorList):
     result = {}
+    result_special_case = {}  # 0% and 100%
     for transistor in transistorList:
-        result.update({transistor.time_turned_on_deg: str()})
-        result.update({transistor.time_turned_off_deg: transistor.name + "_off"})
-
+        result.update({transistor.time_turned_on_deg:
+                           str(createSignalAtTime(transistorList, transistor.time_turned_on_deg))})
+        result.update({transistor.time_turned_off_deg:
+                           str(createSignalAtTime(transistorList, transistor.time_turned_off_deg))})
+    # TODO: special cases a 0% and 100%
     return result
+
+
+def combineKeyIfTheValueSame(d, k1, k2):
+    if d[k1] == d[k2]:
+        return {k1+k2: d[k1]}
 
 
 def visualCheck(transistorList, factor_a, numOfChoppers):
@@ -299,7 +307,7 @@ def visualCheck(transistorList, factor_a, numOfChoppers):
 
     fig, axs = plt.subplots(int(len(transistorList) / 2), sharex=True, sharey=True)
     idx_subplot = 0
-    for idx in range(len(visualCheck_items_list)-1, 0, -2):
+    for idx in range(len(visualCheck_items_list) - 1, 0, -2):
         axs[idx_subplot].plot(visualCheck_items_list[0], visualCheck_items_list[idx - 1],
                               label=transistorList[idx - 1 - 1].name)
         axs[idx_subplot].plot(visualCheck_items_list[0], visualCheck_items_list[idx],
@@ -310,7 +318,7 @@ def visualCheck(transistorList, factor_a, numOfChoppers):
 
     plt.xlabel('gamma')
     # plt.gca().invert_yaxis()
-    plt.suptitle(str(date.today()) + "_" + str(numOfChoppers)+"CP_" + str(factor_a) + "%")
+    plt.suptitle(str(date.today()) + "_" + str(numOfChoppers) + "CP_" + str(factor_a) + "%")
     plt.show()
 
 
@@ -350,8 +358,8 @@ def main():
         [sg.Button('Hide advanced options', key='BUTTONHIDE', visible=False)],
         # End of advanced options
 
-        [sg.Checkbox('Create and automatically open text file', default=True, key='OPENTEXT')],
-        [sg.Checkbox('Create and automatically open on/off time table file', default=True, key='OPENONOFFTIME')],
+        [sg.Checkbox('Create and automatically open text file using sweep method', default=True, key='OPENTEXT')],
+        [sg.Checkbox('Create and automatically open text file using simplified method', default=True, key='OPENONOFFTIME')],
         [sg.Checkbox('Create and automatically open tabel .xlsx file', default=False, key='OPENXLSX')],
         [sg.Checkbox('Plot and automatically open plot', default=False, key='OPENPLOT')],
         [sg.Button("Create table", key='OK1')],
@@ -576,11 +584,11 @@ def main():
             if values['OPENPLOT']:
                 visualCheck(choppersList, factor_a, numOfChoppers)
 
-            #window['IN3'].update(visible=True)
-            #window['NOTE2'].update(visible=True)
-            #window['INPUT3'].update(visible=True)
-            #window['OK2'].update(visible=True)
-            #window['CHOICE2'].update(visible=True)
+            # window['IN3'].update(visible=True)
+            # window['NOTE2'].update(visible=True)
+            # window['INPUT3'].update(visible=True)
+            # window['OK2'].update(visible=True)
+            # window['CHOICE2'].update(visible=True)
 
         # Get signal at random times
         elif event == 'OK2':
