@@ -280,13 +280,13 @@ def exportDictToText_Vertical(mydict, textFileName, numOfChopper=None, factor_a=
 def getTimeONOFF(transistorList):
     result = {}
     for transistor in transistorList:
-        result.update({transistor.time_turned_on_deg: transistor.name + "_on"})
+        result.update({transistor.time_turned_on_deg: str()})
         result.update({transistor.time_turned_off_deg: transistor.name + "_off"})
 
     return result
 
 
-def visualCheck(transistorList):
+def visualCheck(transistorList, factor_a, numOfChoppers):
     visualCheck_items_list = [[] for _ in range(len(transistorList) + 1)]
     for tick in range(0, 36000, 1):
         tick = tick / 100
@@ -296,20 +296,22 @@ def visualCheck(transistorList):
         while signal_idx < len(transistorList):
             visualCheck_items_list[signal_idx + 1].append(signal[signal_idx])
             signal_idx += 1
-    fig, axs = plt.subplots(int(len(transistorList) / 2) + 1)
+
+    fig, axs = plt.subplots(int(len(transistorList) / 2), sharex=True, sharey=True)
     idx_subplot = 0
-    for idx in range(1, len(visualCheck_items_list)):
-        axs[idx_subplot].plot(visualCheck_items_list[0],
-                              visualCheck_items_list[idx],
+    for idx in range(len(visualCheck_items_list)-1, 0, -2):
+        axs[idx_subplot].plot(visualCheck_items_list[0], visualCheck_items_list[idx - 1],
+                              label=transistorList[idx - 1 - 1].name)
+        axs[idx_subplot].plot(visualCheck_items_list[0], visualCheck_items_list[idx],
                               label=transistorList[idx - 1].name)
-        if idx % 2 == 0:
-            idx_subplot += 1
+        axs[idx_subplot].legend(loc="center left")
+
+        idx_subplot += 1
 
     plt.xlabel('gamma')
-    plt.ylabel('signal')
     # plt.gca().invert_yaxis()
-    plt.legend()
-    plt.show(fig)
+    plt.suptitle(str(date.today()) + "_" + str(numOfChoppers)+"CP_" + str(factor_a) + "%")
+    plt.show()
 
 
 def main():
@@ -572,13 +574,13 @@ def main():
 
             # Visual Check
             if values['OPENPLOT']:
-                visualCheck(choppersList)
+                visualCheck(choppersList, factor_a, numOfChoppers)
 
-            window['IN3'].update(visible=True)
-            window['NOTE2'].update(visible=True)
-            window['INPUT3'].update(visible=True)
-            window['OK2'].update(visible=True)
-            window['CHOICE2'].update(visible=True)
+            #window['IN3'].update(visible=True)
+            #window['NOTE2'].update(visible=True)
+            #window['INPUT3'].update(visible=True)
+            #window['OK2'].update(visible=True)
+            #window['CHOICE2'].update(visible=True)
 
         # Get signal at random times
         elif event == 'OK2':
