@@ -107,7 +107,7 @@ def whenSignalChanges_sec_and_deg(transistorsList, T, deltaGamma):
 
 
 # return list of time_length between adjacent t_points in degree and second
-def getDelta_t_sec_and_deg(t, T):
+def getDelta_t_deg_and_usec(t, T=1e-3):
     t_deg = t[0]
     t_usec = t[1]
     dt_deg = []
@@ -121,6 +121,14 @@ def getDelta_t_sec_and_deg(t, T):
             dt_usec.append(T * 1000000 - t_usec[i])
     return dt
 
+
+def getDelta_t_deg(t_deg):
+    dt_deg = []
+    for i in range(1, len(t_deg)):
+        dt_deg.append(round(t_deg[i] - t_deg[i - 1], 4))
+        if i == len(t_deg) - 1:
+            dt_deg.append(round(360 - t_deg[i], 4))
+    return dt_deg
 
 def getChopperList(numOfChoppers, time_diff_deg, time_is_on_deg,
                    pauseTime_deg):  # each chopper has 2 transistor H and L
@@ -265,6 +273,8 @@ def exportDictToText_Horizontal(mydict, textFileName, numOfChopper=None, factor_
 
 def exportDictToText_Vertical(mydict, textFileName, numOfChopper=None, factor_a=None, stepTime=None):
     fileName = str(textFileName)
+    list_time_deg = list(mydict.keys())
+    dt_list_deg = getDelta_t_deg(list_time_deg)
     idx = 0
     with open(fileName, 'w') as f:
         if numOfChopper is not None and factor_a is not None:
@@ -274,7 +284,8 @@ def exportDictToText_Vertical(mydict, textFileName, numOfChopper=None, factor_a=
             f.write(f"Step time: {stepTime} grad\n")
         f.write("\n")
         for key in mydict:
-            f.write("{:<20}{:<20}\n".format(key, mydict[key]))
+            f.write("{:<20}{:<20}{:<20}\n".format(round(key, 6), dt_list_deg[idx], mydict[key]))
+            idx += 1
 
 
 def getTimeONOFF(transistorList):
@@ -313,9 +324,8 @@ def visualCheck(transistorList, factor_a, numOfChoppers):
         axs[idx_subplot].plot(visualCheck_items_list[0], visualCheck_items_list[idx],
                               label=transistorList[idx - 1].name)
         axs[idx_subplot].legend(loc="center left")
-
         idx_subplot += 1
-
+    plt.xticks(list(range(0, 361, 10)))
     plt.xlabel('gamma')
     # plt.gca().invert_yaxis()
     plt.suptitle(str(date.today()) + "_" + str(numOfChoppers) + "CP_" + str(factor_a) + "%")
@@ -338,7 +348,7 @@ def main():
         [sg.Text("Chopper on factor in % (0-100%): ", key="IN2", size=(25, 1)), sg.InputText(key='VALUEofa')],
         # [sg.Text("Number of period: "      , key="Input", size=(25, 1)), sg.InputText()],
         # [sg.Checkbox("Default name, eg: 8CPs-25%-4INVs.xlsx", default=True, key='DEFNAME')],
-        [sg.Text("Default name\neg: 2022-12-01_8CPs-25%.xlsx")],
+        [sg.Text("Default name\neg: 2022-12-01_8CPs-25%")],
         [sg.Button("Custom name for table", key="CUSTOMNAME")],
         [sg.Text("Name for table: ", size=(25, 1), key='CUSTOMNAMETITLE'), sg.InputText(key='FILENAME', disabled=True)],
         [sg.Text("", size=(0, 1), key='ERR1', visible=False, text_color='#b30404')],
@@ -358,8 +368,9 @@ def main():
         [sg.Button('Hide advanced options', key='BUTTONHIDE', visible=False)],
         # End of advanced options
 
-        [sg.Checkbox('Create and automatically open text file using sweep method', default=True, key='OPENTEXT')],
         [sg.Checkbox('Create and automatically open text file using simplified method', default=True, key='OPENONOFFTIME')],
+        [sg.Checkbox('Create and automatically open text file using sweep method (slow)', default=False,
+                     key='OPENTEXT')],
         [sg.Checkbox('Create and automatically open tabel .xlsx file', default=False, key='OPENXLSX')],
         [sg.Checkbox('Plot and automatically open plot', default=False, key='OPENPLOT')],
         [sg.Button("Create table", key='OK1')],
@@ -532,7 +543,7 @@ def main():
             if int(factor_a) % 100 == 0:
                 cp_dt_btw_changes = [[360.0], [T_cp_sec]]  # Special case, a=0% other a=100%
             else:
-                cp_dt_btw_changes = getDelta_t_sec_and_deg(cp_t_changes, T_cp_sec)
+                cp_dt_btw_changes = getDelta_t_deg_and_usec(cp_t_changes, T_cp_sec)
             # Dict for exported file
             cp_dict = createDict(choppersList, cp_t_changes, cp_dt_btw_changes)
             # print(cp_dict)
@@ -549,8 +560,9 @@ def main():
 
             oldFileName = fileName.split("_")[1]
             fileName_xlsx = fileName + ".xlsx"
+            fileName_text_slow = fileName + "_SWEEP" + ".txt"
             fileName_text = fileName + ".txt"
-            fileName_time_table = "TimeTable-" + str(factor_a) + "%.txt"
+            #fileName_time_table = "TimeTable-" + str(factor_a) + "%.txt"
             # print(fileName)
 
             # Create and automatically open xlsx file
@@ -564,21 +576,21 @@ def main():
                     os.startfile(fileName_xlsx)
             # Create and automatically open txt file
             if values['OPENTEXT']:
-                exportDictToText_Horizontal(cp_dict, fileName_text, numOfChoppers, factor_a, deltaGamma)
+                exportDictToText_Horizontal(cp_dict, fileName_text_slow, numOfChoppers, factor_a, deltaGamma)
+                if sys.platform == "darwin":
+                    opener = "open"
+                    subprocess.call([opener, fileName_text_slow])
+                else:
+                    os.startfile(fileName_text_slow)
+
+            # Create and automatically open timetable text
+            if values['OPENONOFFTIME']:
+                exportDictToText_Vertical(time_dict_sorted, fileName_text, numOfChoppers, factor_a)
                 if sys.platform == "darwin":
                     opener = "open"
                     subprocess.call([opener, fileName_text])
                 else:
                     os.startfile(fileName_text)
-
-            # Create and automatically open timetable text
-            if values['OPENONOFFTIME']:
-                exportDictToText_Vertical(time_dict_sorted, fileName_time_table, numOfChoppers, factor_a)
-                if sys.platform == "darwin":
-                    opener = "open"
-                    subprocess.call([opener, fileName_time_table])
-                else:
-                    os.startfile(fileName_time_table)
 
             # Visual Check
             if values['OPENPLOT']:
