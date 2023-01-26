@@ -326,7 +326,7 @@ def visualCheck(transistorList, factor_a, numOfChoppers):
             visualCheck_items_list[signal_idx + 1].append(signal[signal_idx])
             signal_idx += 1
 
-    fig, axs = plt.subplots(int(len(transistorList) / 2), sharex=True, sharey=True)
+    fig, axs = plt.subplots(int(len(transistorList) / 2), sharey="all")
     idx_subplot = 0
     for idx in range(len(visualCheck_items_list) - 1, 0, -2):
         axs[idx_subplot].plot(visualCheck_items_list[0], visualCheck_items_list[idx - 1],
@@ -334,8 +334,9 @@ def visualCheck(transistorList, factor_a, numOfChoppers):
         axs[idx_subplot].plot(visualCheck_items_list[0], visualCheck_items_list[idx],
                               label=transistorList[idx - 1].name)
         axs[idx_subplot].legend(loc="center left")
+        axs[idx_subplot].grid(visible=True, axis='both')
         idx_subplot += 1
-    plt.setp(axs, xticks=list(range(0, 361, 10)), yticks=[0, 1])
+    plt.setp(axs, xticks=list(range(0, 361, 10)), yticks=[0, 1, 1])
     plt.xlabel('gamma')
     # plt.gca().invert_yaxis()
     plt.suptitle(str(date.today()) + "_" + str(numOfChoppers) + "CP_" + str(factor_a) + "%")
@@ -396,7 +397,7 @@ def main():
         [sg.Text("", size=(0, 1), key='OUTPUT2', visible=False)]]
 
     # Program's displayed name
-    window = sg.Window("Choppers Control Signal Generator", layout, finalize=True)
+    window = sg.Window("Choppers Control Signal Generator", layout, finalize=True, resizable=True)
 
     # Key binding
     window.bind('<Return>', '-NEXT-')
