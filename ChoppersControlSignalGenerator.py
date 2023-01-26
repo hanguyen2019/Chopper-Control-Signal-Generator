@@ -2,11 +2,14 @@ import os
 import random
 import subprocess
 import sys
+import math
 from time import sleep
 
 import PySimpleGUI as sg
 import pandas as pd
 import matplotlib.pyplot as plt
+import numpy as np
+from basic_units import radians  # https://matplotlib.org/stable/gallery/units/radian_demo.html
 import csv
 
 from datetime import date
@@ -78,6 +81,17 @@ def deg2sec(deg, T) -> float:
 def sec2deg(sec, T) -> float:
     if T != 0:
         return sec * 360 / T
+
+
+def deg2rad(deg):
+    return deg*math.pi/180
+
+
+def ldeg2lrad(ldeg):
+    result = []
+    for angle in ldeg:
+        result.append(deg2rad(angle))
+    return result
 
 
 # return list of time that signals change in degree and second and list of changed into signals
@@ -277,7 +291,9 @@ def exportDictToText_Horizontal(mydict, textFileName, numOfChopper=None, factor_
 def exportDictToText_Vertical(mydict, textFileName, numOfChopper=None, factor_a=None, stepTime=None):
     fileName = str(textFileName)
     list_time_deg = list(mydict.keys())
-    dt_list_deg = getDelta_t_deg(list_time_deg) if len(list_time_deg) != 1 else [360]
+    list_time_rad = ldeg2lrad(list_time_deg)
+    dt_list_rad = ldeg2lrad(getDelta_t_deg(list_time_deg) if len(list_time_deg) != 1 else [360])
+    end_t_list_rad = list_time_rad[1:len(list_time_rad)] + [2*math.pi]
     idx = 0
     with open(fileName, 'w') as f:
         if numOfChopper is not None and factor_a is not None:
@@ -287,10 +303,14 @@ def exportDictToText_Vertical(mydict, textFileName, numOfChopper=None, factor_a=
         if stepTime is not None:
             f.write(f"Step time: {stepTime} grad\n")
         f.write("\n")
-        f.write("{:<20}{:<20}{:<20}\n".format("time", "length", "signal"))
+        f.write("{:<20}{:<20}{:<20}{:<20}\n".format("from", "length", "to", "signal"))
         for key in mydict:
-            f.write("{:<20}{:<20}{:<20}\n".format(round(key, 6), dt_list_deg[idx], mydict[key]))
+            f.write("{:<20}{:<20}{:<20}{:<20}\n".format(round(deg2rad(key), 6),
+                                                        round(dt_list_rad[idx], 6),
+                                                        round(end_t_list_rad[idx], 6),
+                                                        mydict[key]))
             idx += 1
+        f.write(f"\nNumber of switches: {len(list_time_deg)}")
 
 
 def getTimeTransistorONOFF(transistorList):
@@ -326,19 +346,26 @@ def visualCheck(transistorList, factor_a, numOfChoppers):
             visualCheck_items_list[signal_idx + 1].append(signal[signal_idx])
             signal_idx += 1
 
-    fig, axs = plt.subplots(int(len(transistorList) / 2), sharey="all")
+    time_list_rad = ldeg2lrad(visualCheck_items_list[0])
+    x_axis_values = [val*radians for val in time_list_rad]
+
+    fig, axs = plt.subplots(len(transistorList), sharey="all", sharex="all")
+    #plt.setp(axs, xticks=list(range(0, 361, 10)))
+
+    plt.gca().invert_yaxis()
     idx_subplot = 0
-    for idx in range(len(visualCheck_items_list) - 1, 0, -2):
-        axs[idx_subplot].plot(visualCheck_items_list[0], visualCheck_items_list[idx - 1],
-                              label=transistorList[idx - 1 - 1].name)
-        axs[idx_subplot].plot(visualCheck_items_list[0], visualCheck_items_list[idx],
-                              label=transistorList[idx - 1].name)
+    for idx in range(len(visualCheck_items_list) - 1, 0, -1):
+        if idx % 2 == 0:
+            pltcolor = "r"
+        else:
+            pltcolor = "b"
+        axs[idx_subplot].plot(x_axis_values, visualCheck_items_list[idx], color=pltcolor,
+                              label=transistorList[idx - 1].name, xunits=radians)
         axs[idx_subplot].legend(loc="center left")
         axs[idx_subplot].grid(visible=True, axis='both')
         idx_subplot += 1
-    plt.setp(axs, xticks=list(range(0, 361, 10)), yticks=[0, 1, 1])
+
     plt.xlabel('gamma')
-    # plt.gca().invert_yaxis()
     plt.suptitle(str(date.today()) + "_" + str(numOfChoppers) + "CP_" + str(factor_a) + "%")
     plt.show()
 
@@ -383,9 +410,9 @@ def main():
                      key='OPENONOFFTIME')],
         [sg.Checkbox('Create and automatically open text file using sweep method (slow)', default=False,
                      key='OPENTEXT')],
-        [sg.Checkbox('Create and automatically open tabel .xlsx file', default=False, key='OPENXLSX')],
+        # [sg.Checkbox('Create and automatically open tabel .xlsx file', default=False, key='OPENXLSX')],
         [sg.Checkbox('Plot and automatically open plot', default=False, key='OPENPLOT')],
-        [sg.Button("Create table", key='OK1')],
+        [sg.Button("OK", key='OK1')],
         [sg.Text("Get signal at time [sec]: ", key="IN3", size=(25, 1), visible=False),
          sg.InputText(key='INPUT3', visible=False)],
         [sg.Text("Note: If any of above parameters is changed, create table again before getting signal",
