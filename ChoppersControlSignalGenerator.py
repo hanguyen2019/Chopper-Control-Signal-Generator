@@ -113,6 +113,8 @@ def getDelta_t_deg_and_usec(t, T=1e-3):
     dt_deg = []
     dt_usec = []
     dt = [dt_deg, dt_usec]
+    if len(t[0]) == 1:
+        return [360, T]
     for i in range(1, len(t_deg)):
         dt_deg.append(round(t_deg[i] - t_deg[i - 1], 4))
         dt_usec.append(round(t_usec[i] - t_usec[i - 1], 6))
@@ -129,6 +131,7 @@ def getDelta_t_deg(t_deg):
         if i == len(t_deg) - 1:
             dt_deg.append(round(360 - t_deg[i], 4))
     return dt_deg
+
 
 def getChopperList(numOfChoppers, time_diff_deg, time_is_on_deg,
                    pauseTime_deg):  # each chopper has 2 transistor H and L
@@ -274,35 +277,42 @@ def exportDictToText_Horizontal(mydict, textFileName, numOfChopper=None, factor_
 def exportDictToText_Vertical(mydict, textFileName, numOfChopper=None, factor_a=None, stepTime=None):
     fileName = str(textFileName)
     list_time_deg = list(mydict.keys())
-    dt_list_deg = getDelta_t_deg(list_time_deg)
+    dt_list_deg = getDelta_t_deg(list_time_deg) if len(list_time_deg) != 1 else [360]
     idx = 0
     with open(fileName, 'w') as f:
         if numOfChopper is not None and factor_a is not None:
             f.write(f"Number of choppers: {numOfChopper}\n"
-                    f"Factor a: {factor_a} %\n")
+                    f"Factor a: {factor_a} %\n"
+                    f"Signal is read from right to left. (e.g...CP_BL_1, CP_BH_1, CP_AL_1, CP_AH_1)\n")
         if stepTime is not None:
             f.write(f"Step time: {stepTime} grad\n")
         f.write("\n")
+        f.write("{:<20}{:<20}{:<20}\n".format("time", "length", "signal"))
         for key in mydict:
             f.write("{:<20}{:<20}{:<20}\n".format(round(key, 6), dt_list_deg[idx], mydict[key]))
             idx += 1
 
 
-def getTimeONOFF(transistorList):
+def getTimeTransistorONOFF(transistorList):
     result = {}
-    result_special_case = {}  # 0% and 100%
     for transistor in transistorList:
         result.update({transistor.time_turned_on_deg:
                            str(createSignalAtTime(transistorList, transistor.time_turned_on_deg))})
         result.update({transistor.time_turned_off_deg:
                            str(createSignalAtTime(transistorList, transistor.time_turned_off_deg))})
-    # TODO: special cases a 0% and 100%
-    return result
+    return combineKeyIfTheValueSame(result)
 
 
-def combineKeyIfTheValueSame(d, k1, k2):
-    if d[k1] == d[k2]:
-        return {k1+k2: d[k1]}
+def combineKeyIfTheValueSame(d):
+    keys_values_list = [list(_) for _ in list(d.items())]
+    temp = keys_values_list[len(keys_values_list) - 1]
+    idx = 0
+    for idx in range(len(keys_values_list) - 2, -1, -1):
+        if keys_values_list[idx][1] == temp[1]:
+            keys_values_list.remove(keys_values_list[idx])
+        else:
+            temp = keys_values_list[idx]
+    return dict(keys_values_list)
 
 
 def visualCheck(transistorList, factor_a, numOfChoppers):
@@ -325,7 +335,7 @@ def visualCheck(transistorList, factor_a, numOfChoppers):
                               label=transistorList[idx - 1].name)
         axs[idx_subplot].legend(loc="center left")
         idx_subplot += 1
-    plt.xticks(list(range(0, 361, 10)))
+    plt.setp(axs, xticks=list(range(0, 361, 10)), yticks=[0, 1])
     plt.xlabel('gamma')
     # plt.gca().invert_yaxis()
     plt.suptitle(str(date.today()) + "_" + str(numOfChoppers) + "CP_" + str(factor_a) + "%")
@@ -368,7 +378,8 @@ def main():
         [sg.Button('Hide advanced options', key='BUTTONHIDE', visible=False)],
         # End of advanced options
 
-        [sg.Checkbox('Create and automatically open text file using simplified method', default=True, key='OPENONOFFTIME')],
+        [sg.Checkbox('Create and automatically open text file using simplified method', default=True,
+                     key='OPENONOFFTIME')],
         [sg.Checkbox('Create and automatically open text file using sweep method (slow)', default=False,
                      key='OPENTEXT')],
         [sg.Checkbox('Create and automatically open tabel .xlsx file', default=False, key='OPENXLSX')],
@@ -406,7 +417,7 @@ def main():
                 window['PAUSETIME_VALUE'].update(value=pauseTime)
             else:
                 try:
-                    T_cp_sec = abs(float(values['PAUSETIME_VALUE']))
+                    pauseTime = abs(float(values['PAUSETIME_VALUE']))
                 except (AttributeError, ValueError, TypeError, ValueError):
                     window['ERR3'].update(value="Error: Invalid value of pause time", visible=True)
                     sleep(0.5)
@@ -526,8 +537,10 @@ def main():
                 updateTimeIsOn(choppersList, cp_time_is_on_deg, pauseTime_deg)
                 old_factor_a = factor_a
 
+            # Temporary, there are bugs in updateTimeIsOn
+            choppersList = getChopperList(numOfChoppers, time_diff_deg, cp_time_is_on_deg, pauseTime_deg)
             # create dict time on/off (key) and transistor name (value)
-            time_dict_sorted = dict(sorted(getTimeONOFF(choppersList).items()))
+            time_dict_sorted = dict(sorted(getTimeTransistorONOFF(choppersList).items()))
             # print(time_dict_sorted)
 
             # Dictionary for basic information in exported xlxs file
@@ -562,12 +575,12 @@ def main():
             fileName_xlsx = fileName + ".xlsx"
             fileName_text_slow = fileName + "_SWEEP" + ".txt"
             fileName_text = fileName + ".txt"
-            #fileName_time_table = "TimeTable-" + str(factor_a) + "%.txt"
+            # fileName_time_table = "TimeTable-" + str(factor_a) + "%.txt"
             # print(fileName)
 
             # Create and automatically open xlsx file
             if values['OPENXLSX']:
-                print(fileName_xlsx)
+                #print(fileName_xlsx)
                 exportDictToExcel(dictList, numOfChoppers, factor_a, fileName_xlsx)
                 if sys.platform == "darwin":
                     opener = "open"
