@@ -339,18 +339,14 @@ def visualCheck(transistorList, factor_a, numOfChoppers):
     visualCheck_items_list = [[] for _ in range(len(transistorList) + 1)]
     for tick in range(0, 36000, 1):
         tick = tick / 100
-        visualCheck_items_list[0].append(tick)
+        visualCheck_items_list[0].append(deg2rad(tick)*radians)
         signal = str(createSignalAtTime(transistorList, tick))
         signal_idx = 0
         while signal_idx < len(transistorList):
             visualCheck_items_list[signal_idx + 1].append(signal[signal_idx])
             signal_idx += 1
 
-    time_list_rad = ldeg2lrad(visualCheck_items_list[0])
-    x_axis_values = [val*radians for val in time_list_rad]
-
     fig, axs = plt.subplots(len(transistorList), sharey="all", sharex="all")
-    #plt.setp(axs, xticks=list(range(0, 361, 10)))
 
     plt.gca().invert_yaxis()
     idx_subplot = 0
@@ -359,7 +355,7 @@ def visualCheck(transistorList, factor_a, numOfChoppers):
             pltcolor = "r"
         else:
             pltcolor = "b"
-        axs[idx_subplot].plot(x_axis_values, visualCheck_items_list[idx], color=pltcolor,
+        axs[idx_subplot].plot(visualCheck_items_list[0], visualCheck_items_list[idx], color=pltcolor,
                               label=transistorList[idx - 1].name, xunits=radians)
         axs[idx_subplot].legend(loc="center left")
         axs[idx_subplot].grid(visible=True, axis='both')
