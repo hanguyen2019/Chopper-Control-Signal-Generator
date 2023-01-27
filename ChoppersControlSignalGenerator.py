@@ -29,6 +29,7 @@ class Transistor:
             self.time_turned_off_deg = (self.time_turned_on_deg + self.time_is_on_deg) % 360
 
     def isOn(self, currentTime):
+        currentTime = round(currentTime % 360, 6)
         if self.time_is_on_deg == 0 or self.time_is_on_deg == 0.0:
             return 0
         elif self.time_turned_on_deg < self.time_turned_off_deg:
@@ -63,7 +64,7 @@ def updateTimeIsOn(transistorList, new_time_is_on_deg, pauseTime):
                                                 transistorList[idx].time_turned_off_deg + pauseTime)
 
 
-def createSignalAtTime(transistorsList, currentTime):  # currentTime in deg
+def getSignalAtTime(transistorsList, currentTime):  # currentTime in deg
     result = 0
     binumFormat = '0' + str(len(transistorsList)) + 'b'
     idx = len(transistorsList) - 1
@@ -97,7 +98,7 @@ def ldeg2lrad(ldeg):
 # return list of time that signals change in degree and second and list of changed into signals
 # T is needed because chopper and inverter have different Ts and T is needed when convert t to gamma
 # def whenSignalChanges_sec_and_deg(transistorsList, numOfPeriod, T):
-def whenSignalChanges_sec_and_deg(transistorsList, T, deltaGamma):
+def whenSignalChanges_sec_and_deg(transistorsList, T, deltaGamma, numOfPeriods):
     result = ""
     repeat = 0
     t_deg = []
@@ -107,11 +108,11 @@ def whenSignalChanges_sec_and_deg(transistorsList, T, deltaGamma):
     gamma = 0.0
     # deltaGamma = 0.5
     # for gamma in range(0, numOfPeriod * 360, 1):
-    while gamma < 360:
+    while gamma < 360*numOfPeriods:
         # if gamma == repeat * 360 or gamma > repeat * 360:
         #    repeat += 1
         oldResult = result
-        result = str(createSignalAtTime(transistorsList, gamma))
+        result = str(getSignalAtTime(transistorsList, gamma))
         if oldResult != result:
             t_deg.append(round(gamma, 4))
             t_usec.append(round(deg2sec(gamma, T) * 1000000, 6))
@@ -121,29 +122,29 @@ def whenSignalChanges_sec_and_deg(transistorsList, T, deltaGamma):
 
 
 # return list of time_length between adjacent t_points in degree and second
-def getDelta_t_deg_and_usec(t, T=1e-3):
+def getDelta_t_deg_and_usec(t, numOfPeriods, T=1e-3):
     t_deg = t[0]
     t_usec = t[1]
     dt_deg = []
     dt_usec = []
     dt = [dt_deg, dt_usec]
     if len(t[0]) == 1:
-        return [360, T]
+        return [360*numOfPeriods, T]
     for i in range(1, len(t_deg)):
-        dt_deg.append(round(t_deg[i] - t_deg[i - 1], 4))
+        dt_deg.append(round(t_deg[i] - t_deg[i - 1], 6))
         dt_usec.append(round(t_usec[i] - t_usec[i - 1], 6))
         if i == len(t_deg) - 1:
-            dt_deg.append(round(360 - t_deg[i], 4))
-            dt_usec.append(T * 1000000 - t_usec[i])
+            dt_deg.append(round(360*numOfPeriods - t_deg[i], 6))
+            dt_usec.append(T*numOfPeriods * 1000000 - t_usec[i])
     return dt
 
 
-def getDelta_t_deg(t_deg):
+def getDelta_t_deg(t_deg, numOfPeriods):
     dt_deg = []
     for i in range(1, len(t_deg)):
-        dt_deg.append(round(t_deg[i] - t_deg[i - 1], 4))
+        dt_deg.append(round(t_deg[i] - t_deg[i - 1], 6))
         if i == len(t_deg) - 1:
-            dt_deg.append(round(360 - t_deg[i], 4))
+            dt_deg.append(round(numOfPeriods*360 - t_deg[i], 6))
     return dt_deg
 
 
@@ -269,7 +270,7 @@ def exportDictToExcel(dictList, numOfChoppers, factor, tableFileName):
     writer.close()
 
 
-def exportDictToText_Horizontal(mydict, textFileName, numOfChopper=None, factor_a=None, stepTime=None):
+def exportDictToText_Horizontal(mydict, textFileName, numOfPeriods, numOfChopper=None, factor_a=None, stepTime=None):
     fileName = str(textFileName)
     idx = 0
     with open(fileName, 'w') as f:
@@ -286,14 +287,15 @@ def exportDictToText_Horizontal(mydict, textFileName, numOfChopper=None, factor_
                 f.write("{:<20}".format(value[idx]))
             f.write("\n")
             idx += 1
+        f.write(f"\nNumber of signal switches: {int(len(mydict[key])/numOfPeriods)} in a period.")
 
 
-def exportDictToText_Vertical(mydict, textFileName, numOfChopper=None, factor_a=None, stepTime=None):
+def exportDictToText_Vertical(mydict, textFileName, numOfPeriods=1, numOfChopper=None, factor_a=None, stepTime=None):
     fileName = str(textFileName)
     list_time_deg = list(mydict.keys())
     list_time_rad = ldeg2lrad(list_time_deg)
-    dt_list_rad = ldeg2lrad(getDelta_t_deg(list_time_deg) if len(list_time_deg) != 1 else [360])
-    end_t_list_rad = list_time_rad[1:len(list_time_rad)] + [2*math.pi]
+    dt_list_rad = ldeg2lrad(getDelta_t_deg(list_time_deg, numOfPeriods) if len(list_time_deg) != 1 else [360])
+    end_t_list_rad = list_time_rad[1:len(list_time_rad)] + [numOfPeriods*2*math.pi]
     idx = 0
     with open(fileName, 'w') as f:
         if numOfChopper is not None and factor_a is not None:
@@ -310,16 +312,20 @@ def exportDictToText_Vertical(mydict, textFileName, numOfChopper=None, factor_a=
                                                         round(end_t_list_rad[idx], 6),
                                                         mydict[key]))
             idx += 1
-        f.write(f"\nNumber of switches: {len(list_time_deg)}")
+        f.write(f"\nNumber of signal switches: {int(len(list_time_deg)/numOfPeriods)} in a period.")
 
 
-def getTimeTransistorONOFF(transistorList):
+def getTimeTransistor_ONOFF(transistorList, numOfPeriod=1):
     result = {}
-    for transistor in transistorList:
-        result.update({transistor.time_turned_on_deg:
-                           str(createSignalAtTime(transistorList, transistor.time_turned_on_deg))})
-        result.update({transistor.time_turned_off_deg:
-                           str(createSignalAtTime(transistorList, transistor.time_turned_off_deg))})
+    for loop in range(numOfPeriod):
+        for transistor in transistorList:
+            time_turned_on = round(loop*360 + transistor.time_turned_on_deg, 6)
+            time_turned_off = round(loop*360 + transistor.time_turned_off_deg, 6)
+            result.update({time_turned_on:
+                               str(getSignalAtTime(transistorList, time_turned_on))})
+            result.update({time_turned_off:
+                               str(getSignalAtTime(transistorList, time_turned_off))})
+    result = dict(sorted(result.items()))
     return combineKeyIfTheValueSame(result)
 
 
@@ -335,12 +341,12 @@ def combineKeyIfTheValueSame(d):
     return dict(keys_values_list)
 
 
-def visualCheck(transistorList, factor_a, numOfChoppers):
+def visualCheck(transistorList, factor_a, numOfChoppers, numOfPeriods):
     visualCheck_items_list = [[] for _ in range(len(transistorList) + 1)]
-    for tick in range(0, 36000, 1):
+    for tick in range(0, numOfPeriods*36000, 5):
         tick = tick / 100
         visualCheck_items_list[0].append(deg2rad(tick)*radians)
-        signal = str(createSignalAtTime(transistorList, tick))
+        signal = str(getSignalAtTime(transistorList, tick))
         signal_idx = 0
         while signal_idx < len(transistorList):
             visualCheck_items_list[signal_idx + 1].append(signal[signal_idx])
@@ -367,7 +373,7 @@ def visualCheck(transistorList, factor_a, numOfChoppers):
 
 
 def main():
-    global choppersList, numOfChoppers, old_numOfChoppers, factor_a, numOfInverters, T_cp_sec, deltaGamma, pauseTime
+    global choppersList, numOfChoppers, old_numOfChoppers, factor_a, numOfInverters, T_cp_sec, deltaGamma, pauseTime, numOfPeriods
     T_cp_sec_default = 1e-3
     pauseTime_default = 500e-9
     deltaGamma_default = 0.144  # Equivalent to 2.5 MSPS for chopper (T=10e-3) and 25 MSPS for Inverter (T=10e-4)
@@ -380,7 +386,8 @@ def main():
     layout = [  # Standard layout
         [sg.Text("Number of choppers: ", key="IN", size=(25, 1)), sg.InputText(key='NUMofCP')],
         [sg.Text("Chopper on factor in % (0-100%): ", key="IN2", size=(25, 1)), sg.InputText(key='VALUEofa')],
-        # [sg.Text("Number of period: "      , key="Input", size=(25, 1)), sg.InputText()],
+        [sg.Text("Number of period: ", key="Input", size=(25, 1)),
+         sg.InputText(default_text=1, key="NUMOFPERIOD")],
         # [sg.Checkbox("Default name, eg: 8CPs-25%-4INVs.xlsx", default=True, key='DEFNAME')],
         [sg.Text("Default name\neg: 2022-12-01_8CPs-25%")],
         [sg.Button("Custom name for table", key="CUSTOMNAME")],
@@ -392,11 +399,11 @@ def main():
         # Advanced options
         [sg.Button('Show advanced options', key='BUTTONSHOW', visible=True)],
         [sg.Text("Pause time between high and low transistor: ", key='PAUSETIMETXT', visible=False, size=(25, 2)),
-         sg.InputText(key='PAUSETIME_VALUE', visible=False)],
+         sg.InputText(key='PAUSETIME_VALUE', visible=False, default_text=pauseTime_default)],
         [sg.Text("Choppers' period in sec: ", size=(25, 1), key='CPTText', visible=False),
-         sg.InputText(key='CPPeriod', visible=False)],
+         sg.InputText(key='CPPeriod', visible=False, default_text=T_cp_sec_default)],
         [sg.Text("Delta gamma in degree: ", size=(25, 1), key='DELTAGAMMA', visible=False),
-         sg.InputText(key='DELTAGAMMA_VAL', visible=False)],
+         sg.InputText(key='DELTAGAMMA_VAL', visible=False, default_text=deltaGamma_default)],
         [sg.Text("Note: 0.144° corresponds to 2.5 MSPS for chopper (T=1e-3)", key='NOTEDELTAGAMMA', visible=False)],
         [sg.Text("", size=(0, 1), key='ERR3', visible=False, text_color='#b30404')],
         [sg.Button('Hide advanced options', key='BUTTONHIDE', visible=False)],
@@ -405,7 +412,7 @@ def main():
         [sg.Checkbox('Create and automatically open text file using simplified method', default=True,
                      key='OPENONOFFTIME')],
         [sg.Checkbox('Create and automatically open text file using sweep method (slow)', default=False,
-                     key='OPENTEXT')],
+                     key='OPENTEXT_SWEEP')],
         [sg.Checkbox('Create and automatically open tabel .xlsx file', default=False, key='OPENXLSX', visible=False)],
         [sg.Checkbox('Plot and automatically open plot', default=False, key='OPENPLOT')],
         [sg.Button("OK", key='OK1')],
@@ -433,50 +440,6 @@ def main():
     # Program runs and reacts with pressed buttons (events)
     while 1:
         event, values = window.read()
-        # ADVANCED OPTIONS
-        # Pause time
-        try:  # Used to remove annoying error in python
-            if values['PAUSETIME_VALUE'] == '':
-                pauseTime = pauseTime_default
-                window['PAUSETIME_VALUE'].update(value=pauseTime)
-            else:
-                try:
-                    pauseTime = abs(float(values['PAUSETIME_VALUE']))
-                except (AttributeError, ValueError, TypeError, ValueError):
-                    window['ERR3'].update(value="Error: Invalid value of pause time", visible=True)
-                    sleep(0.5)
-                    continue
-        except TypeError:
-            pass
-        # T_cp_sec
-        try:  # Used to remove annoying error in python
-            if values['CPPeriod'] == '':
-                T_cp_sec = T_cp_sec_default
-                window['CPPeriod'].update(value=T_cp_sec)
-            else:
-                try:
-                    T_cp_sec = abs(float(values['CPPeriod']))
-                except (AttributeError, ValueError, TypeError, ValueError):
-                    window['ERR3'].update(value="Error: Invalid value of choppers' period", visible=True)
-                    sleep(0.5)
-                    continue
-        except TypeError:
-            pass
-        # Delta Gamma
-        try:  # Used to remove annoying error in python
-            if values['DELTAGAMMA_VAL'] == '':
-                deltaGamma = deltaGamma_default
-                window['DELTAGAMMA_VAL'].update(value=deltaGamma)
-            else:
-                try:
-                    deltaGamma = abs(float(values['DELTAGAMMA_VAL']))
-                except (AttributeError, ValueError, TypeError, ValueError):
-                    window['ERR3'].update(value="Error: Invalid value of delta gamma", visible=True)
-                    sleep(0.5)
-                    continue
-        except TypeError:
-            pass
-        # ENDS OF ADVANCED OPTIONS
 
         # Moving focus through input fields
         if event == '-NEXT-':
@@ -527,7 +490,7 @@ def main():
             try:
                 numOfChoppers = abs(int(values['NUMofCP']))
                 window['NUMofCP'].update(value=numOfChoppers)
-            except (AttributeError, ValueError, TypeError, ValueError):
+            except (AttributeError, ValueError, TypeError):
                 window['ERR1'].update(value="Error: Invalid value of number of choppers!", visible=True)
                 sleep(0.5)
                 continue
@@ -544,49 +507,65 @@ def main():
                         value="Warning: chopper on factor will be changed to " + str(factor_a % 100) + "%.",
                         visible=True)
                     window['VALUEofa'].update(value=factor_a)
-            except (AttributeError, ValueError, TypeError, ValueError):
+            except (AttributeError, ValueError, TypeError):
                 window['ERR1'].update(value="Error: Invalid value of number of chopper factor a!", visible=True)
                 sleep(0.5)
                 continue
             cp_time_is_on_deg = factor_a / 100 * 360.0
 
-            pauseTime_deg = sec2deg(pauseTime, T_cp_sec)
+            # Number of periods
+            try:
+                numOfPeriods = abs(int(values['NUMOFPERIOD']))
+            except (AttributeError, ValueError, TypeError, numOfPeriods < 1):
+                window['ERR1'].update(value="Error: Invalid value of number of periods!", visible=True)
+                sleep(0.5)
+                continue
+            # ADVANCED OPTIONS
+            # T_cp_sec
+            try:
+                T_cp_sec = abs(float(values['CPPeriod']))
+            except (AttributeError, ValueError, TypeError, ValueError):
+                window['ERR3'].update(value="Error: Invalid value of choppers' period", visible=True)
+                sleep(0.5)
+                continue
+            # Pause time
+            try:
+                pauseTime_deg = sec2deg(float(values['PAUSETIME_VALUE']), T_cp_sec)
+            except (AttributeError, ValueError, TypeError, ValueError):
+                window['ERR3'].update(value="Error: Invalid value of pause time", visible=True)
+                sleep(0.5)
+                continue
+            # Delta Gamma
+            try:
+                deltaGamma = abs(float(values['DELTAGAMMA_VAL']))
+            except (AttributeError, ValueError, TypeError, ValueError):
+                window['ERR3'].update(value="Error: Invalid value of delta gamma", visible=True)
+                sleep(0.5)
+                continue
+            # ENDS OF ADVANCED OPTIONS
+
+            # Remove error messages
+            window['ERR1'].update(visible=False)
+            window['ERR2'].update(visible=False)
+            window['ERR3'].update(visible=False)
 
             # create new chopper list depends on number of choppers if choppers' number is changed
-            if numOfChoppers != old_numOfChoppers:
-                choppersList = getChopperList(numOfChoppers, time_diff_deg, cp_time_is_on_deg, pauseTime_deg)
-                old_numOfChoppers = numOfChoppers
-                old_factor_a = factor_a
-            elif factor_a != old_factor_a:  # else update only the on time
-                updateTimeIsOn(choppersList, cp_time_is_on_deg, pauseTime_deg)
-                old_factor_a = factor_a
+            if 0:
+                if numOfChoppers != old_numOfChoppers:
+                    choppersList = getChopperList(numOfChoppers, time_diff_deg, cp_time_is_on_deg, pauseTime_deg)
+                    old_numOfChoppers = numOfChoppers
+                    old_factor_a = factor_a
+                elif factor_a != old_factor_a:  # else update only the on time
+                    updateTimeIsOn(choppersList, cp_time_is_on_deg, pauseTime_deg)
+                    old_factor_a = factor_a
 
             # Temporary, there are bugs in updateTimeIsOn
             choppersList = getChopperList(numOfChoppers, time_diff_deg, cp_time_is_on_deg, pauseTime_deg)
             # create dict time on/off (key) and transistor name (value)
-            time_dict_sorted = dict(sorted(getTimeTransistorONOFF(choppersList).items()))
+            time_dict_sorted = getTimeTransistor_ONOFF(choppersList, numOfPeriods)
             # print(time_dict_sorted)
 
             # Dictionary for basic information in exported xlxs file
-            info_dict = {
-                'Number\nof\nchoppers': [numOfChoppers],
-                'Choppers\non\nfactor\n[%]': [factor_a],
-                "Choppers'\nperiod\n[sec]": [T_cp_sec]
-            }
-
-            # Get time that controlling signal for choppers changes
-            cp_t_changes = whenSignalChanges_sec_and_deg(choppersList, T_cp_sec, deltaGamma)
-            # Get time between changes
-            if int(factor_a) % 100 == 0:
-                cp_dt_btw_changes = [[360.0], [T_cp_sec]]  # Special case, a=0% other a=100%
-            else:
-                cp_dt_btw_changes = getDelta_t_deg_and_usec(cp_t_changes, T_cp_sec)
-            # Dict for exported file
-            cp_dict = createDict(choppersList, cp_t_changes, cp_dt_btw_changes)
-            # print(cp_dict)
-
-            # print(inv_dict)
-            dictList = [info_dict, cp_dict]
 
             # remove blank space in fileName and make it valid
             fileName = values['FILENAME'].replace(" ", "")
@@ -603,8 +582,25 @@ def main():
             # print(fileName)
 
             # Create and automatically open xlsx file
+            if values['OPENXLSX'] or values['OPENTEXT_SWEEP']:
+                info_dict = {
+                    'Number\nof\nchoppers': [numOfChoppers],
+                    'Choppers\non\nfactor\n[%]': [factor_a],
+                    "Choppers'\nperiod\n[sec]": [T_cp_sec]
+                }
+                # Get time that controlling signal for choppers changes
+                cp_t_changes = whenSignalChanges_sec_and_deg(choppersList, T_cp_sec, deltaGamma, numOfPeriods)
+                # Get time between changes
+                if int(factor_a) % 100 == 0:
+                    cp_dt_btw_changes = [[360.0], [T_cp_sec]]  # Special case, a=0% other a=100%
+                else:
+                    cp_dt_btw_changes = getDelta_t_deg_and_usec(cp_t_changes, numOfPeriods, T_cp_sec)
+                # Dict for exported file
+                cp_dict = createDict(choppersList, cp_t_changes, cp_dt_btw_changes)
+
+                dictList = [info_dict, cp_dict]
+                # print(fileName_xlsx)
             if values['OPENXLSX']:
-                #print(fileName_xlsx)
                 exportDictToExcel(dictList, numOfChoppers, factor_a, fileName_xlsx)
                 if sys.platform == "darwin":
                     opener = "open"
@@ -612,8 +608,8 @@ def main():
                 else:
                     os.startfile(fileName_xlsx)
             # Create and automatically open txt file
-            if values['OPENTEXT']:
-                exportDictToText_Horizontal(cp_dict, fileName_text_slow, numOfChoppers, factor_a, deltaGamma)
+            if values['OPENTEXT_SWEEP']:
+                exportDictToText_Horizontal(cp_dict, fileName_text_slow, numOfPeriods, numOfChoppers, factor_a, deltaGamma)
                 if sys.platform == "darwin":
                     opener = "open"
                     subprocess.call([opener, fileName_text_slow])
@@ -622,7 +618,7 @@ def main():
 
             # Create and automatically open timetable text
             if values['OPENONOFFTIME']:
-                exportDictToText_Vertical(time_dict_sorted, fileName_text, numOfChoppers, factor_a)
+                exportDictToText_Vertical(time_dict_sorted, fileName_text, numOfPeriods, numOfChoppers, factor_a)
                 if sys.platform == "darwin":
                     opener = "open"
                     subprocess.call([opener, fileName_text])
@@ -631,7 +627,7 @@ def main():
 
             # Visual Check
             if values['OPENPLOT']:
-                visualCheck(choppersList, factor_a, numOfChoppers)
+                visualCheck(choppersList, factor_a, numOfChoppers, numOfPeriods)
 
             # window['IN3'].update(visible=True)
             # window['NOTE2'].update(visible=True)
@@ -653,7 +649,7 @@ def main():
                 window['INPUT3'].update(value=timeInSec)
 
             cp_timeInDeg = sec2deg(timeInSec, T_cp_sec) % 360
-            choppersSignal = createSignalAtTime(choppersList, cp_timeInDeg)
+            choppersSignal = getSignalAtTime(choppersList, cp_timeInDeg)
 
             window['OUTPUT1'].update(value="Signal for choppers: " + str(choppersSignal), visible=True)
 
