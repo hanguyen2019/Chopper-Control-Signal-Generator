@@ -1,4 +1,14 @@
 /build/
+/dist/
+/.idea/
+
 *.pyw
 *.spec
-/dist/
+*.toc
+*.txt
+*.pkg
+*.manifest
+*.pyz
+*.html
+*.xml
+*.iml
