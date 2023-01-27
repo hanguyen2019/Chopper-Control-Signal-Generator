@@ -303,7 +303,7 @@ def exportDictToText_Vertical(mydict, textFileName, numOfChopper=None, factor_a=
         if stepTime is not None:
             f.write(f"Step time: {stepTime} grad\n")
         f.write("\n")
-        f.write("{:<20}{:<20}{:<20}{:<20}\n".format("from", "length", "to", "signal"))
+        f.write("{:<20}{:<20}{:<20}{:<20}\n".format("from", "duration", "to", "signal"))
         for key in mydict:
             f.write("{:<20}{:<20}{:<20}{:<20}\n".format(round(deg2rad(key), 6),
                                                         round(dt_list_rad[idx], 6),
