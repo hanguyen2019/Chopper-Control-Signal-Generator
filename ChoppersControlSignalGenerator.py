@@ -331,9 +331,9 @@ def getTimeTransistor_ONOFF(transistorList, numOfPeriod=1):
 
 def combineKeyIfTheValueSame(d):
     keys_values_list = [list(_) for _ in list(d.items())]
-    temp = keys_values_list[len(keys_values_list) - 1]
+    temp = keys_values_list[0]
     idx = 0
-    for idx in range(len(keys_values_list) - 2, -1, -1):
+    for idx in range(1, len(keys_values_list)):
         if keys_values_list[idx][1] == temp[1]:
             keys_values_list.remove(keys_values_list[idx])
         else:
@@ -354,7 +354,8 @@ def visualCheck(transistorList, factor_a, numOfChoppers, numOfPeriods):
 
     fig, axs = plt.subplots(len(transistorList), sharey="all", sharex="all")
 
-    plt.gca().invert_yaxis()
+    if factor_a != 0:
+        plt.gca().invert_yaxis()
     idx_subplot = 0
     for idx in range(len(visualCheck_items_list) - 1, 0, -1):
         if idx % 2 == 0:
@@ -630,6 +631,9 @@ def main():
             # Visual Check
             if values['OPENPLOT']:
                 visualCheck(choppersList, factor_a, numOfChoppers, numOfPeriods)
+
+
+        #Features for debug and playing purposes
 
             # window['IN3'].update(visible=True)
             # window['NOTE2'].update(visible=True)
