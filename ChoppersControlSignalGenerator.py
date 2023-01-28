@@ -426,10 +426,11 @@ def main():
 
         [sg.Checkbox('Create and automatically open text file using simplified method', default=True,
                      key='OPENONOFFTIME')],
-        [sg.Checkbox('Create and automatically open tabel .xlsx file', default=False, key='OPENXLSX', visible=False)],
+        [sg.Checkbox('Plot and automatically open plot', default=False, key='OPENPLOT')],
         [sg.Checkbox('Create and automatically open text file using sweep method (slow)', default=False,
                      key='OPENTEXT_SWEEP')],
-        [sg.Checkbox('Plot and automatically open plot', default=False, key='OPENPLOT')],
+        [sg.Checkbox('Create and automatically open tabel .xlsx file', default=False, key='OPENXLSX', visible=False)],
+
         [sg.Button("OK", key='OK1')],
         [sg.Text("Get signal at time [sec]: ", key="IN3", size=(25, 1), visible=False),
          sg.InputText(key='INPUT3', visible=False)],
