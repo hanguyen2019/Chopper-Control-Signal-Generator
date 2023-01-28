@@ -24,9 +24,9 @@ class Transistor:
             self.time_is_on_deg = 0.0
             self.time_turned_off_deg = 0.0
         else:
-            self.time_turned_on_deg = time_turned_on_deg % 360
+            self.time_turned_on_deg = round(time_turned_on_deg % 360)
             self.time_is_on_deg = time_is_on_deg
-            self.time_turned_off_deg = (self.time_turned_on_deg + self.time_is_on_deg) % 360
+            self.time_turned_off_deg = round((self.time_turned_on_deg + self.time_is_on_deg) % 360, 6)
 
     def isOn(self, currentTime):
         currentTime = round(currentTime % 360, 6)
@@ -51,10 +51,10 @@ class Transistor:
             self.time_is_on_deg = 0.0
             self.time_turned_off_deg = 0.0
         else:
-            self.time_is_on_deg = new_time_is_on_deg
             if new_time_turned_on is not None:
-                self.time_turned_on_deg = new_time_turned_on % 360
-            self.time_turned_off_deg = (self.time_turned_on_deg + self.time_is_on_deg) % 360
+                self.time_turned_on_deg = round(new_time_turned_on % 360, 6)
+            self.time_is_on_deg = new_time_is_on_deg
+            self.time_turned_off_deg = round((self.time_turned_on_deg + self.time_is_on_deg) % 360, 6)
 
 
 def updateTimeIsOn(transistorList, new_time_is_on_deg, pauseTime):
@@ -62,7 +62,7 @@ def updateTimeIsOn(transistorList, new_time_is_on_deg, pauseTime):
         transistorList[idx].updateParameter(new_time_is_on_deg, None)
         if int(new_time_is_on_deg) == 0:
             transistorList[idx - 1].updateParameter(360, 0)
-        elif int(new_time_is_on_deg) == 100:
+        elif int(new_time_is_on_deg) == 360:
             transistorList[idx - 1].updateParameter(0, 0)
         else:
             transistorList[idx - 1].updateParameter(360 - new_time_is_on_deg - pauseTime * 2,
@@ -521,7 +521,7 @@ def main():
                 window['ERR1'].update(value="Error: Invalid value of number of chopper factor a!", visible=True)
                 sleep(0.5)
                 continue
-            cp_time_is_on_deg = factor_a / 100 * 360.0
+            cp_time_is_on_deg = round(factor_a / 100 * 360.0, 6)
 
             # Number of periods
             try:
@@ -583,7 +583,7 @@ def main():
             fileName = values['FILENAME'].replace(" ", "")
             if fileName == '' or fileName.split("_")[1] == oldFileName:
                 # Add date to fileName
-                fileName = str(date.today()) + "_" + str(numOfChoppers) + "CPs-" + str(int(factor_a)) + "%-" + str(numOfPeriods) +"Ts"
+                fileName = str(date.today()) + "_" + str(numOfChoppers) + "CPs-" + str(factor_a) + "%-" + str(numOfPeriods) +"Ts"
                 window['FILENAME'].update(value=fileName)
 
             oldFileName = fileName.split("_")[1]
