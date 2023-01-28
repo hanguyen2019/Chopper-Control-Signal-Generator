@@ -301,23 +301,28 @@ def exportDictToText_Vertical(mydict, textFileName, numOfPeriods=1, numOfChopper
     list_time_rad = ldeg2lrad(list_time_deg)
     dt_list_rad = ldeg2lrad(getDelta_t_deg(list_time_deg, numOfPeriods) if len(list_time_deg) != 1 else [numOfPeriods*360])
     end_t_list_rad = list_time_rad[1:len(list_time_rad)] + [numOfPeriods*2*math.pi]
+
+    numOfSwitches = int(len(list_time_deg) / numOfPeriods)
     idx = 0
     with open(fileName, 'w') as f:
         if numOfChopper is not None and factor_a is not None:
             f.write(f"Number of choppers: {numOfChopper}\n"
                     f"Factor a: {factor_a} %\n"
                     f"Signal is read from right to left. (e.g...CP_BL_1, CP_BH_1, CP_AL_1, CP_AH_1)\n")
+        f.write(f"\nNumber of signal switches: {numOfSwitches} in a period.\n")
         if stepTime is not None:
             f.write(f"Step time: {stepTime} grad\n")
         f.write("\n")
         f.write("{:<20}{:<20}{:<20}{:<20}\n".format("from", "duration", "to", "signal"))
+        f.write(80 * "-" + "\n")
         for key in mydict:
             f.write("{:<20}{:<20}{:<20}{:<20}\n".format(round(deg2rad(key), 6),
                                                         round(dt_list_rad[idx], 6),
                                                         round(end_t_list_rad[idx], 6),
                                                         mydict[key]))
             idx += 1
-        f.write(f"\nNumber of signal switches: {int(len(list_time_deg)/numOfPeriods)} in a period.")
+            if idx % numOfSwitches == 0:
+                f.write(80*"-"+"\n")
 
 
 def getTimeTransistor_ONOFF(transistorList, numOfPeriod=1):
@@ -421,9 +426,9 @@ def main():
 
         [sg.Checkbox('Create and automatically open text file using simplified method', default=True,
                      key='OPENONOFFTIME')],
+        [sg.Checkbox('Create and automatically open tabel .xlsx file', default=False, key='OPENXLSX', visible=False)],
         [sg.Checkbox('Create and automatically open text file using sweep method (slow)', default=False,
                      key='OPENTEXT_SWEEP')],
-        [sg.Checkbox('Create and automatically open tabel .xlsx file', default=False, key='OPENXLSX', visible=False)],
         [sg.Checkbox('Plot and automatically open plot', default=False, key='OPENPLOT')],
         [sg.Button("OK", key='OK1')],
         [sg.Text("Get signal at time [sec]: ", key="IN3", size=(25, 1), visible=False),
@@ -562,17 +567,16 @@ def main():
             window['ERR3'].update(visible=False)
 
             # create new chopper list depends on number of choppers if choppers' number is changed
-            if 1:
-                if numOfChoppers != old_numOfChoppers:
-                    choppersList = getChopperList(numOfChoppers, time_diff_deg, cp_time_is_on_deg, pauseTime_deg)
-                    old_numOfChoppers = numOfChoppers
-                    old_factor_a = factor_a
-                elif factor_a != old_factor_a:  # else update only the on time
-                    updateTimeIsOn(choppersList, cp_time_is_on_deg, pauseTime_deg)
-                    old_factor_a = factor_a
+            if numOfChoppers != old_numOfChoppers:
+                choppersList = getChopperList(numOfChoppers, time_diff_deg, cp_time_is_on_deg, pauseTime_deg)
+                old_numOfChoppers = numOfChoppers
+                old_factor_a = factor_a
+            elif factor_a != old_factor_a:  # else update only the on time
+                updateTimeIsOn(choppersList, cp_time_is_on_deg, pauseTime_deg)
+                old_factor_a = factor_a
 
-            # Temporary, there are bugs in updateTimeIsOn
-            #choppersList = getChopperList(numOfChoppers, time_diff_deg, cp_time_is_on_deg, pauseTime_deg)
+            # Temporary, there are bugs in updateTimeIsOn / bug is fixed
+            # choppersList = getChopperList(numOfChoppers, time_diff_deg, cp_time_is_on_deg, pauseTime_deg)
             # create dict time on/off (key) and transistor name (value)
             time_dict_sorted = getTimeTransistor_ONOFF(choppersList, numOfPeriods)
             # print(time_dict_sorted)
