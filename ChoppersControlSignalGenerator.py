@@ -299,7 +299,7 @@ def exportDictToText_Vertical(mydict, textFileName, numOfPeriods=1, numOfChopper
     fileName = str(textFileName)
     list_time_deg = list(mydict.keys())
     list_time_rad = ldeg2lrad(list_time_deg)
-    dt_list_rad = ldeg2lrad(getDelta_t_deg(list_time_deg, numOfPeriods) if len(list_time_deg) != 1 else [360])
+    dt_list_rad = ldeg2lrad(getDelta_t_deg(list_time_deg, numOfPeriods) if len(list_time_deg) != 1 else [numOfPeriods*360])
     end_t_list_rad = list_time_rad[1:len(list_time_rad)] + [numOfPeriods*2*math.pi]
     idx = 0
     with open(fileName, 'w') as f:
@@ -337,16 +337,20 @@ def getTimeTransistor_ONOFF(transistorList, numOfPeriod=1):
 def combineKeyIfTheValueSame(d):
     keys_values_list = [list(_) for _ in list(d.items())]
     temp = keys_values_list[0]
-    idx = 0
-    for idx in range(1, len(keys_values_list)):
+    idx = 1
+    length = len(keys_values_list)
+    while idx < length:
         if keys_values_list[idx][1] == temp[1]:
             keys_values_list.remove(keys_values_list[idx])
+            idx -= 1
+            length -= 1
         else:
             temp = keys_values_list[idx]
+        idx += 1
     return dict(keys_values_list)
 
 
-def visualCheck(transistorList, factor_a, numOfChoppers, numOfPeriods):
+def visualCheck(transistorList, factor_a, numOfChoppers, numOfPeriods, fileName):
     visualCheck_items_list = [[] for _ in range(len(transistorList) + 1)]
     for tick in range(0, numOfPeriods*36000, 5):
         tick = tick / 100
@@ -374,7 +378,7 @@ def visualCheck(transistorList, factor_a, numOfChoppers, numOfPeriods):
         idx_subplot += 1
 
     plt.xlabel('gamma')
-    plt.suptitle(str(date.today()) + "_" + str(numOfChoppers) + "CP_" + str(factor_a) + "%")
+    plt.suptitle(fileName, size=20)
     plt.show()
 
 
@@ -579,7 +583,7 @@ def main():
             fileName = values['FILENAME'].replace(" ", "")
             if fileName == '' or fileName.split("_")[1] == oldFileName:
                 # Add date to fileName
-                fileName = str(date.today()) + "_" + str(numOfChoppers) + "CPs-" + str(int(factor_a)) + "%"
+                fileName = str(date.today()) + "_" + str(numOfChoppers) + "CPs-" + str(int(factor_a)) + "%-" + str(numOfPeriods) +"Ts"
                 window['FILENAME'].update(value=fileName)
 
             oldFileName = fileName.split("_")[1]
@@ -635,7 +639,7 @@ def main():
 
             # Visual Check
             if values['OPENPLOT']:
-                visualCheck(choppersList, factor_a, numOfChoppers, numOfPeriods)
+                visualCheck(choppersList, factor_a, numOfChoppers, numOfPeriods, fileName)
 
 
         #Features for debug and playing purposes
