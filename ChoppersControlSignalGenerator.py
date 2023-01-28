@@ -516,7 +516,9 @@ def main():
             # Number of periods
             try:
                 numOfPeriods = abs(int(values['NUMOFPERIOD']))
-            except (AttributeError, ValueError, TypeError, numOfPeriods < 1):
+                if numOfPeriods < 1:
+                    raise ValueError
+            except (AttributeError, ValueError, TypeError):
                 window['ERR1'].update(value="Error: Invalid value of number of periods!", visible=True)
                 sleep(0.5)
                 continue
