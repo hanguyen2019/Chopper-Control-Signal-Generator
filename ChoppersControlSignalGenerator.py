@@ -600,7 +600,7 @@ def main():
 
                 dictList = [info_dict, cp_dict]
                 # print(fileName_xlsx)
-            if values['OPENXLSX']:
+            if values['OPENXLSX']:  # Disabled because Dr. Spichartz does not want this
                 exportDictToExcel(dictList, numOfChoppers, factor_a, fileName_xlsx)
                 if sys.platform == "darwin":
                     opener = "open"
