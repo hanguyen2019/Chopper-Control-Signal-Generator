@@ -60,7 +60,12 @@ class Transistor:
 def updateTimeIsOn(transistorList, new_time_is_on_deg, pauseTime):
     for idx in range(len(transistorList) - 1, -1, -2):
         transistorList[idx].updateParameter(new_time_is_on_deg, None)
-        transistorList[idx - 1].updateParameter(360 - new_time_is_on_deg - pauseTime * 2,
+        if int(new_time_is_on_deg) == 0:
+            transistorList[idx - 1].updateParameter(360, 0)
+        elif int(new_time_is_on_deg) == 100:
+            transistorList[idx - 1].updateParameter(0, 0)
+        else:
+            transistorList[idx - 1].updateParameter(360 - new_time_is_on_deg - pauseTime * 2,
                                                 transistorList[idx].time_turned_off_deg + pauseTime)
 
 
@@ -553,7 +558,7 @@ def main():
             window['ERR3'].update(visible=False)
 
             # create new chopper list depends on number of choppers if choppers' number is changed
-            if 0:
+            if 1:
                 if numOfChoppers != old_numOfChoppers:
                     choppersList = getChopperList(numOfChoppers, time_diff_deg, cp_time_is_on_deg, pauseTime_deg)
                     old_numOfChoppers = numOfChoppers
@@ -563,7 +568,7 @@ def main():
                     old_factor_a = factor_a
 
             # Temporary, there are bugs in updateTimeIsOn
-            choppersList = getChopperList(numOfChoppers, time_diff_deg, cp_time_is_on_deg, pauseTime_deg)
+            #choppersList = getChopperList(numOfChoppers, time_diff_deg, cp_time_is_on_deg, pauseTime_deg)
             # create dict time on/off (key) and transistor name (value)
             time_dict_sorted = getTimeTransistor_ONOFF(choppersList, numOfPeriods)
             # print(time_dict_sorted)
