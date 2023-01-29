@@ -302,7 +302,7 @@ def exportDictToText_Vertical(mydict, textFileName, numOfPeriods=1, numOfChopper
     dt_list_rad = ldeg2lrad(getDelta_t_deg(list_time_deg, numOfPeriods) if len(list_time_deg) != 1 else [numOfPeriods*360])
     end_t_list_rad = list_time_rad[1:len(list_time_rad)] + [numOfPeriods*2*math.pi]
 
-    numOfSwitches = int(len(list_time_deg) / numOfPeriods)
+    numOfSwitches = int(len(list_time_deg) / numOfPeriods if len(list_time_deg) !=1 else 1)
     idx = 0
     with open(fileName, 'w') as f:
         if numOfChopper is not None and factor_a is not None:
@@ -516,7 +516,7 @@ def main():
             # factor_a = float(input("Enter chopper on factor in %: "))
             try:
                 factor_a = abs(float(values['VALUEofa']))
-                # factor_a_list = values['VALUEofa'].split(",")
+                #factor_a_list = [abs(float(_)) for _ in values['VALUEofa'].split(",")]
                 if factor_a > 100:
                     factor_a = factor_a % 100
                     window['ERR1'].update(
@@ -617,21 +617,21 @@ def main():
 
                 dictList = [info_dict, cp_dict]
                 # print(fileName_xlsx)
-            if values['OPENXLSX']:  # Disabled because Dr. Spichartz does not want this
-                exportDictToExcel(dictList, numOfChoppers, factor_a, fileName_xlsx)
-                if sys.platform == "darwin":
-                    opener = "open"
-                    subprocess.call([opener, fileName_xlsx])
-                else:
-                    os.startfile(fileName_xlsx)
-            # Create and automatically open txt file
-            if values['OPENTEXT_SWEEP']:
-                exportDictToText_Horizontal(cp_dict, fileName_text_slow, numOfPeriods, numOfChoppers, factor_a, deltaGamma)
-                if sys.platform == "darwin":
-                    opener = "open"
-                    subprocess.call([opener, fileName_text_slow])
-                else:
-                    os.startfile(fileName_text_slow)
+                if values['OPENXLSX']:  # Disabled because Dr. Spichartz does not want this
+                    exportDictToExcel(dictList, numOfChoppers, factor_a, fileName_xlsx)
+                    if sys.platform == "darwin":
+                        opener = "open"
+                        subprocess.call([opener, fileName_xlsx])
+                    else:
+                        os.startfile(fileName_xlsx)
+                # Create and automatically open txt file
+                if values['OPENTEXT_SWEEP']:
+                    exportDictToText_Horizontal(cp_dict, fileName_text_slow, numOfPeriods, numOfChoppers, factor_a, deltaGamma)
+                    if sys.platform == "darwin":
+                        opener = "open"
+                        subprocess.call([opener, fileName_text_slow])
+                    else:
+                        os.startfile(fileName_text_slow)
 
             # Create and automatically open timetable text
             if values['OPENONOFFTIME']:
