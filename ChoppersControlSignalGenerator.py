@@ -582,8 +582,6 @@ def main():
             time_dict_sorted = getTimeTransistor_ONOFF(choppersList, numOfPeriods)
             # print(time_dict_sorted)
 
-            # Dictionary for basic information in exported xlxs file
-
             # remove blank space in fileName and make it valid
             fileName = values['FILENAME'].replace(" ", "")
             if fileName == '' or fileName.split("_")[1] == oldFileName:
@@ -600,6 +598,7 @@ def main():
 
             # Create and automatically open xlsx file
             if values['OPENXLSX'] or values['OPENTEXT_SWEEP']:
+                # Dictionary for basic information in exported xlxs file
                 info_dict = {
                     'Number\nof\nchoppers': [numOfChoppers],
                     'Choppers\non\nfactor\n[%]': [factor_a],
