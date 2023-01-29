@@ -412,7 +412,7 @@ def main():
     # Create program's UI
     layout = [  # Standard layout
         [sg.Text("Number of choppers: ", key="IN", size=(25, 1)), sg.InputText(key='NUMofCP')],
-        [sg.Text("Chopper on factor(s) in % (0-100%)\nSeparate with comma", size=(25, 2)),
+        [sg.Text("Chopper on factor(s) in % (0-100%)\nSeparate with space or comma", size=(25, 2)),
          sg.InputText(key='VALUEofa')],
         [sg.Text("Number of period: ", key="Input", size=(25, 1)),
          sg.InputText(default_text=1, key="NUMOFPERIOD")],
