@@ -3,6 +3,7 @@ import random
 import subprocess
 import sys
 import math
+import re
 from time import sleep
 
 import PySimpleGUI as sg
@@ -275,27 +276,33 @@ def exportDictToExcel(dictList, numOfChoppers, factor, tableFileName):
     writer.close()
 
 
-def exportDictToText_Horizontal(mydict, textFileName, numOfPeriods, numOfChopper=None, factor_a=None, stepTime=None):
+def exportDictToText_Horizontal(mydict, textFileName, numOfPeriods, count, numOfChopper, factor_a, stepTime):
     fileName = str(textFileName)
+    numOfSwitches = int(len(list(mydict.values())[0]) / numOfPeriods if len(list(mydict.values())[0]) != 1 else 1)
     idx = 0
-    with open(fileName, 'w') as f:
-        if numOfChopper is not None and factor_a is not None and stepTime is not None:
+    if count == 1:
+        with open(fileName, 'w'):
+            pass
+    with open(fileName, 'a') as f:
+        if count == 1:
             f.write(f"Number of choppers: {numOfChopper}\n"
-                    f"Factor a: {factor_a} %\n"
                     f"Step time: {stepTime} grad\n\n")
-
+        f.write(f"Factor a: {factor_a} %\n")
         for key in mydict.keys():
             f.write("{:<20}".format(key))
         f.write("\n")
+        f.write(120 * "-" + "\n")
         while idx < len(mydict[key]):
             for value in mydict.values():
                 f.write("{:<20}".format(value[idx]))
             f.write("\n")
             idx += 1
-        f.write(f"\nNumber of signal switches: {int(len(mydict[key])/numOfPeriods)} in a period.")
+            if idx % numOfSwitches == 0:
+                f.write(120 * "-" + "\n")
+        f.write(f"Number of signal switches: {numOfSwitches} in a period.\n\n")
 
 
-def exportDictToText_Vertical(mydict, textFileName, numOfPeriods=1, numOfChopper=None, factor_a=None, stepTime=None):
+def exportDictToText_Vertical(mydict, textFileName, numOfPeriods, count, numOfChopper, factor_a, stepTime=None):
     fileName = str(textFileName)
     list_time_deg = list(mydict.keys())
     list_time_rad = ldeg2lrad(list_time_deg)
@@ -304,15 +311,19 @@ def exportDictToText_Vertical(mydict, textFileName, numOfPeriods=1, numOfChopper
 
     numOfSwitches = int(len(list_time_deg) / numOfPeriods if len(list_time_deg) !=1 else 1)
     idx = 0
-    with open(fileName, 'w') as f:
-        if numOfChopper is not None and factor_a is not None:
+    if count == 1:
+        with open(fileName, 'w'):
+            pass
+    with open(fileName, 'a') as f:
+        if count != 1:
+            f.write("\n")
+        if count == 1:
             f.write(f"Number of choppers: {numOfChopper}\n"
-                    f"Factor a: {factor_a} %\n"
                     f"Signal is read from right to left. (e.g...CP_BL_1, CP_BH_1, CP_AL_1, CP_AH_1)\n")
-        f.write(f"\nNumber of signal switches: {numOfSwitches} in a period.\n")
         if stepTime is not None:
             f.write(f"Step time: {stepTime} grad\n")
-        f.write("\n")
+        f.write(f"\nFactor a: {factor_a} %\n")
+        f.write(f"Number of signal switches: {numOfSwitches} in a period.\n\n")
         f.write("{:<20}{:<20}{:<20}{:<20}\n".format("from", "duration", "to", "signal"))
         f.write(80 * "-" + "\n")
         for key in mydict:
@@ -355,7 +366,7 @@ def combineKeyIfTheValueSame(d):
     return dict(keys_values_list)
 
 
-def visualCheck(transistorList, factor_a, numOfChoppers, numOfPeriods, fileName):
+def visualCheck(transistorList, factor_a, numOfChoppers, numOfPeriods, fileName, show=0):
     visualCheck_items_list = [[] for _ in range(len(transistorList) + 1)]
     for tick in range(0, numOfPeriods*36000, 5):
         tick = tick / 100
@@ -384,11 +395,12 @@ def visualCheck(transistorList, factor_a, numOfChoppers, numOfPeriods, fileName)
 
     plt.xlabel('gamma')
     plt.suptitle(fileName, size=20)
-    plt.show()
+    if show:
+        plt.show()
 
 
 def main():
-    global choppersList, numOfChoppers, old_numOfChoppers, factor_a, numOfInverters, T_cp_sec, deltaGamma, pauseTime, numOfPeriods
+    global choppersList, numOfChoppers, old_numOfChoppers, numOfInverters, T_cp_sec, deltaGamma, pauseTime, numOfPeriods
     T_cp_sec_default = 1e-3
     pauseTime_default = 500e-9
     deltaGamma_default = 0.144  # Equivalent to 2.5 MSPS for chopper (T=10e-3) and 25 MSPS for Inverter (T=10e-4)
@@ -400,7 +412,8 @@ def main():
     # Create program's UI
     layout = [  # Standard layout
         [sg.Text("Number of choppers: ", key="IN", size=(25, 1)), sg.InputText(key='NUMofCP')],
-        [sg.Text("Chopper on factor in % (0-100%): ", key="IN2", size=(25, 1)), sg.InputText(key='VALUEofa')],
+        [sg.Text("Chopper on factor(s) in % (0-100%)\nSeparate with comma", size=(25, 2)),
+         sg.InputText(key='VALUEofa')],
         [sg.Text("Number of period: ", key="Input", size=(25, 1)),
          sg.InputText(default_text=1, key="NUMOFPERIOD")],
         # [sg.Checkbox("Default name, eg: 8CPs-25%-4INVs.xlsx", default=True, key='DEFNAME')],
@@ -515,19 +528,12 @@ def main():
             # Factor_a
             # factor_a = float(input("Enter chopper on factor in %: "))
             try:
-                factor_a = abs(float(values['VALUEofa']))
-                #factor_a_list = [abs(float(_)) for _ in values['VALUEofa'].split(",")]
-                if factor_a > 100:
-                    factor_a = factor_a % 100
-                    window['ERR1'].update(
-                        value="Warning: chopper on factor will be changed to " + str(factor_a % 100) + "%.",
-                        visible=True)
-                    window['VALUEofa'].update(value=factor_a)
+                #factor_a = abs(float(values['VALUEofa']))
+                factor_a_list = [abs(float(_)) for _ in re.split(",| ", values['VALUEofa'])]
             except (AttributeError, ValueError, TypeError):
                 window['ERR1'].update(value="Error: Invalid value of number of chopper factor a!", visible=True)
                 sleep(0.5)
                 continue
-            cp_time_is_on_deg = round(factor_a / 100 * 360.0, 6)
 
             # Number of periods
             try:
@@ -567,83 +573,112 @@ def main():
             window['ERR2'].update(visible=False)
             window['ERR3'].update(visible=False)
 
-            # create new chopper list depends on number of choppers if choppers' number is changed
-            if numOfChoppers != old_numOfChoppers:
-                choppersList = getChopperList(numOfChoppers, time_diff_deg, cp_time_is_on_deg, pauseTime_deg)
-                old_numOfChoppers = numOfChoppers
-                old_factor_a = factor_a
-            elif factor_a != old_factor_a:  # else update only the on time
-                updateTimeIsOn(choppersList, cp_time_is_on_deg, pauseTime_deg)
-                old_factor_a = factor_a
-
-            # Temporary, there are bugs in updateTimeIsOn / bug is fixed
-            # choppersList = getChopperList(numOfChoppers, time_diff_deg, cp_time_is_on_deg, pauseTime_deg)
-            # create dict time on/off (key) and transistor name (value)
-            time_dict_sorted = getTimeTransistor_ONOFF(choppersList, numOfPeriods)
-            # print(time_dict_sorted)
-
+            # File names
             # remove blank space in fileName and make it valid
             fileName = values['FILENAME'].replace(" ", "")
             if fileName == '' or fileName.split("_")[1] == oldFileName:
                 # Add date to fileName
-                fileName = str(date.today()) + "_" + str(numOfChoppers) + "CPs-" + str(factor_a) + "%-" + str(numOfPeriods) +"Ts"
+                if len(factor_a_list) == 1:
+                    fileName = str(date.today()) + "_" + str(numOfChoppers) + "CPs-" + \
+                               str(numOfPeriods) + "Ts-" + \
+                               str(factor_a_list[0]) + "%"
+                else:
+                    fileName = str(date.today()) + "_" + str(numOfChoppers) + "CPs-" + \
+                               str(numOfPeriods) + "Ts-" + \
+                               str(len(factor_a_list)) + "Fs"
+
                 window['FILENAME'].update(value=fileName)
 
-            oldFileName = fileName.split("_")[1]
+            oldFileName = fileName.split("_")[1]  # Remove the date part in fileName
             fileName_xlsx = fileName + ".xlsx"
             fileName_text_slow = fileName + "_SWEEP" + ".txt"
             fileName_text = fileName + ".txt"
             # fileName_time_table = "TimeTable-" + str(factor_a) + "%.txt"
             # print(fileName)
 
-            # Create and automatically open xlsx file
-            if values['OPENXLSX'] or values['OPENTEXT_SWEEP']:
-                # Dictionary for basic information in exported xlxs file
-                info_dict = {
-                    'Number\nof\nchoppers': [numOfChoppers],
-                    'Choppers\non\nfactor\n[%]': [factor_a],
-                    "Choppers'\nperiod\n[sec]": [T_cp_sec]
-                }
-                # Get time that controlling signal for choppers changes
-                cp_t_changes = whenSignalChanges_sec_and_deg(choppersList, T_cp_sec, deltaGamma, numOfPeriods)
-                # Get time between changes
-                if int(factor_a) % 100 == 0:
-                    cp_dt_btw_changes = [[360.0], [T_cp_sec]]  # Special case, a=0% other a=100%
-                else:
-                    cp_dt_btw_changes = getDelta_t_deg_and_usec(cp_t_changes, numOfPeriods, T_cp_sec)
-                # Dict for exported file
-                cp_dict = createDict(choppersList, cp_t_changes, cp_dt_btw_changes)
+            # Text creating and plotting
+            count_tc_pl = 0
+            for factor_a in factor_a_list:
+                if factor_a > 100:
+                    factor_a = factor_a % 100
+                    window['ERR1'].update(
+                        value="Warning: chopper on factor will be changed to " + str(factor_a % 100) + "%.",
+                        visible=True)
+                    window['VALUEofa'].update(value=factor_a)
 
-                dictList = [info_dict, cp_dict]
-                # print(fileName_xlsx)
-                if values['OPENXLSX']:  # Disabled because Dr. Spichartz does not want this
-                    exportDictToExcel(dictList, numOfChoppers, factor_a, fileName_xlsx)
-                    if sys.platform == "darwin":
-                        opener = "open"
-                        subprocess.call([opener, fileName_xlsx])
+                cp_time_is_on_deg = round(factor_a / 100 * 360.0, 6)
+                count_tc_pl += 1
+                # create new chopper list depends on number of choppers if choppers' number is changed
+                if numOfChoppers != old_numOfChoppers:
+                    choppersList = getChopperList(numOfChoppers, time_diff_deg, cp_time_is_on_deg, pauseTime_deg)
+                    old_numOfChoppers = numOfChoppers
+                    old_factor_a = factor_a
+                elif factor_a != old_factor_a:  # else update only the on time
+                    updateTimeIsOn(choppersList, cp_time_is_on_deg, pauseTime_deg)
+                    old_factor_a = factor_a
+
+                # Temporary, there are bugs in updateTimeIsOn / bug is fixed
+                # choppersList = getChopperList(numOfChoppers, time_diff_deg, cp_time_is_on_deg, pauseTime_deg)
+                # create dict time on/off (key) and transistor name (value)
+                time_dict_sorted = getTimeTransistor_ONOFF(choppersList, numOfPeriods)
+                # print(time_dict_sorted)
+
+                # Create and automatically open xlsx file
+                if values['OPENXLSX'] or values['OPENTEXT_SWEEP']:
+                    # Dictionary for basic information in exported xlxs file
+                    info_dict = {
+                        'Number\nof\nchoppers': [numOfChoppers],
+                        'Choppers\non\nfactor\n[%]': [factor_a],
+                        "Choppers'\nperiod\n[sec]": [T_cp_sec]
+                    }
+                    # Get time that controlling signal for choppers changes
+                    cp_t_changes = whenSignalChanges_sec_and_deg(choppersList, T_cp_sec, deltaGamma, numOfPeriods)
+                    # Get time between changes
+                    if int(factor_a) % 100 == 0:
+                        cp_dt_btw_changes = [[360.0], [T_cp_sec]]  # Special case, a=0% other a=100%
                     else:
-                        os.startfile(fileName_xlsx)
-                # Create and automatically open txt file
-                if values['OPENTEXT_SWEEP']:
-                    exportDictToText_Horizontal(cp_dict, fileName_text_slow, numOfPeriods, numOfChoppers, factor_a, deltaGamma)
-                    if sys.platform == "darwin":
-                        opener = "open"
-                        subprocess.call([opener, fileName_text_slow])
-                    else:
-                        os.startfile(fileName_text_slow)
+                        cp_dt_btw_changes = getDelta_t_deg_and_usec(cp_t_changes, numOfPeriods, T_cp_sec)
+                    # Dict for exported file
+                    cp_dict = createDict(choppersList, cp_t_changes, cp_dt_btw_changes)
 
-            # Create and automatically open timetable text
-            if values['OPENONOFFTIME']:
-                exportDictToText_Vertical(time_dict_sorted, fileName_text, numOfPeriods, numOfChoppers, factor_a)
-                if sys.platform == "darwin":
-                    opener = "open"
-                    subprocess.call([opener, fileName_text])
-                else:
-                    os.startfile(fileName_text)
+                    dictList = [info_dict, cp_dict]
+                    # print(fileName_xlsx)
+                    if values['OPENXLSX']:  # Disabled because Dr. Spichartz does not want this
+                        exportDictToExcel(dictList, numOfChoppers, factor_a, fileName_xlsx)
+                        if count_tc_pl == len(factor_a_list):
+                            if sys.platform == "darwin":
+                                opener = "open"
+                                subprocess.call([opener, fileName_xlsx])
+                            else:
+                                os.startfile(fileName_xlsx)
+                    # Create and automatically open txt file
+                    if values['OPENTEXT_SWEEP']:
+                        exportDictToText_Horizontal(cp_dict, fileName_text_slow, numOfPeriods, count_tc_pl, numOfChoppers, factor_a, deltaGamma)
+                        if count_tc_pl == len(factor_a_list):
+                            if sys.platform == "darwin":
+                                opener = "open"
+                                subprocess.call([opener, fileName_text_slow])
+                            else:
+                                os.startfile(fileName_text_slow)
 
-            # Visual Check
-            if values['OPENPLOT']:
-                visualCheck(choppersList, factor_a, numOfChoppers, numOfPeriods, fileName)
+                # Create and automatically open timetable text
+                if values['OPENONOFFTIME']:
+                    exportDictToText_Vertical(time_dict_sorted, fileName_text, numOfPeriods, count_tc_pl, numOfChoppers, factor_a)
+                    if count_tc_pl == len(factor_a_list):
+                        if sys.platform == "darwin":
+                            opener = "open"
+                            subprocess.call([opener, fileName_text])
+                        else:
+                            os.startfile(fileName_text)
+
+                # Visual Check
+                if values['OPENPLOT']:
+                    show = 0
+                    if len(factor_a_list) != 1:
+                        fileName = fileName.rsplit("-", 1)[0] + "-" + str(factor_a) + "%"
+                    if count_tc_pl == len(factor_a_list):
+                        show = 1
+                    visualCheck(choppersList, factor_a, numOfChoppers, numOfPeriods, fileName, show)
 
 
         #Features for debug and playing purposes
