@@ -25,8 +25,8 @@ class Transistor:
             self.time_is_on_deg = 0.0
             self.time_turned_off_deg = 0.0
         else:
-            self.time_turned_on_deg = round(time_turned_on_deg % 360)
-            self.time_is_on_deg = time_is_on_deg
+            self.time_turned_on_deg = round(time_turned_on_deg % 360, 6)
+            self.time_is_on_deg = round(time_is_on_deg, 6)
             self.time_turned_off_deg = round((self.time_turned_on_deg + self.time_is_on_deg) % 360, 6)
 
     def isOn(self, currentTime):
@@ -54,7 +54,7 @@ class Transistor:
         else:
             if new_time_turned_on is not None:
                 self.time_turned_on_deg = round(new_time_turned_on % 360, 6)
-            self.time_is_on_deg = new_time_is_on_deg
+            self.time_is_on_deg = round(new_time_is_on_deg, 6)
             self.time_turned_off_deg = round((self.time_turned_on_deg + self.time_is_on_deg) % 360, 6)
 
 
@@ -67,7 +67,7 @@ def updateTimeIsOn(transistorList, new_time_is_on_deg, pauseTime):
             transistorList[idx - 1].updateParameter(0, 0)
         else:
             transistorList[idx - 1].updateParameter(360 - new_time_is_on_deg - pauseTime * 2,
-                                                transistorList[idx].time_turned_off_deg + pauseTime)
+                                                    transistorList[idx].time_turned_off_deg + pauseTime)
 
 
 def getSignalAtTime(transistorsList, currentTime):  # currentTime in deg
@@ -91,7 +91,7 @@ def sec2deg(sec, T) -> float:
 
 
 def deg2rad(deg):
-    return deg*math.pi/180
+    return deg * math.pi / 180
 
 
 def ldeg2lrad(ldeg):
@@ -114,7 +114,7 @@ def whenSignalChanges_sec_and_deg(transistorsList, T, deltaGamma, numOfPeriods):
     gamma = 0.0
     # deltaGamma = 0.5
     # for gamma in range(0, numOfPeriod * 360, 1):
-    while gamma < 360*numOfPeriods:
+    while gamma < 360 * numOfPeriods:
         # if gamma == repeat * 360 or gamma > repeat * 360:
         #    repeat += 1
         oldResult = result
@@ -135,13 +135,13 @@ def getDelta_t_deg_and_usec(t, numOfPeriods, T=1e-3):
     dt_usec = []
     dt = [dt_deg, dt_usec]
     if len(t[0]) == 1:
-        return [360*numOfPeriods, T]
+        return [360 * numOfPeriods, T]
     for i in range(1, len(t_deg)):
         dt_deg.append(round(t_deg[i] - t_deg[i - 1], 6))
         dt_usec.append(round(t_usec[i] - t_usec[i - 1], 6))
         if i == len(t_deg) - 1:
-            dt_deg.append(round(360*numOfPeriods - t_deg[i], 6))
-            dt_usec.append(T*numOfPeriods * 1000000 - t_usec[i])
+            dt_deg.append(round(360 * numOfPeriods - t_deg[i], 6))
+            dt_usec.append(T * numOfPeriods * 1000000 - t_usec[i])
     return dt
 
 
@@ -150,7 +150,7 @@ def getDelta_t_deg(t_deg, numOfPeriods):
     for i in range(1, len(t_deg)):
         dt_deg.append(round(t_deg[i] - t_deg[i - 1], 6))
         if i == len(t_deg) - 1:
-            dt_deg.append(round(numOfPeriods*360 - t_deg[i], 6))
+            dt_deg.append(round(numOfPeriods * 360 - t_deg[i], 6))
     return dt_deg
 
 
@@ -170,23 +170,22 @@ def getChopperList(numOfChoppers, time_diff_deg, time_is_on_deg,
                                                   (idxA - 1) * time_diff_deg,
                                                   time_is_on_deg))
                 choppersList.insert(0, Transistor("chopper", "CP_AL_" + str(idxA),
-                                                  (idxA - 1) * time_diff_deg + time_is_on_deg + pauseTime_deg if int(
-                                                      time_is_on_deg) != 0
-                                                  else (idxA - 1) * time_diff_deg,
-                                                  360 - time_is_on_deg - pauseTime_deg * 2 if int(
-                                                      time_is_on_deg) != 0 else 360))
+                                                  (idxA - 1) * time_diff_deg + time_is_on_deg + pauseTime_deg if
+                                                  time_is_on_deg != 0.000000
+                                                  else 0,
+                                                  360 - time_is_on_deg - pauseTime_deg * 2 if
+                                                  time_is_on_deg != 0.000000 else 360))
                 idxA += 1
             else:
                 choppersList.insert(0, Transistor("chopper", "CP_BH_" + str(idxB),
                                                   (idxB - 1) * time_diff_deg + 180,
                                                   time_is_on_deg))
                 choppersList.insert(0, Transistor("chopper", "CP_BL_" + str(idxB),
-                                                  (
-                                                          idxB - 1) * time_diff_deg + 180 + time_is_on_deg + pauseTime_deg if int(
-                                                      time_is_on_deg) != 0
-                                                  else (idxB - 1) * time_diff_deg + 180,
-                                                  360 - time_is_on_deg - pauseTime_deg * 2 if int(
-                                                      time_is_on_deg) != 0 else 360))
+                                                  (idxB - 1) * time_diff_deg + time_is_on_deg + 180 + pauseTime_deg if
+                                                  time_is_on_deg != 0.000000
+                                                  else 0,
+                                                  360 - time_is_on_deg - pauseTime_deg * 2 if
+                                                  time_is_on_deg != 0.000000 else 360))
                 idxB += 1
     else:
         for cpIdx2 in range(1, numOfChoppers * 2 + 1):
@@ -194,11 +193,11 @@ def getChopperList(numOfChoppers, time_diff_deg, time_is_on_deg,
                                               (cpIdx2 - 1) * time_diff_deg,
                                               time_is_on_deg))
             choppersList.insert(0, Transistor("chopper", "CP_L_" + str(cpIdx2),
-                                              (cpIdx2 - 1) * time_diff_deg + time_is_on_deg + pauseTime_deg if int(
-                                                  time_is_on_deg) != 0
-                                              else (cpIdx2 - 1) * time_diff_deg,
-                                              360 - time_is_on_deg - pauseTime_deg * 2 if int(
-                                                  time_is_on_deg) != 0 else 360))
+                                              (cpIdx2- 1) * time_diff_deg + time_is_on_deg + pauseTime_deg if
+                                              time_is_on_deg != 0.000000
+                                              else 0,
+                                              360 - time_is_on_deg - pauseTime_deg * 2 if
+                                              time_is_on_deg != 0.000000 else 360))
     return choppersList
 
 
@@ -306,10 +305,11 @@ def exportDictToText_Vertical(mydict, textFileName, numOfPeriods, count, numOfCh
     fileName = str(textFileName)
     list_time_deg = list(mydict.keys())
     list_time_rad = ldeg2lrad(list_time_deg)
-    dt_list_rad = ldeg2lrad(getDelta_t_deg(list_time_deg, numOfPeriods) if len(list_time_deg) != 1 else [numOfPeriods*360])
-    end_t_list_rad = list_time_rad[1:len(list_time_rad)] + [numOfPeriods*2*math.pi]
+    dt_list_rad = ldeg2lrad(
+        getDelta_t_deg(list_time_deg, numOfPeriods) if len(list_time_deg) != 1 else [numOfPeriods * 360])
+    end_t_list_rad = list_time_rad[1:len(list_time_rad)] + [numOfPeriods * 2 * math.pi]
 
-    numOfSwitches = int(len(list_time_deg) / numOfPeriods if len(list_time_deg) !=1 else 1)
+    numOfSwitches = int(len(list_time_deg) / numOfPeriods if len(list_time_deg) != 1 else 1)
     idx = 0
     if count == 1:
         with open(fileName, 'w'):
@@ -333,15 +333,15 @@ def exportDictToText_Vertical(mydict, textFileName, numOfPeriods, count, numOfCh
                                                         mydict[key]))
             idx += 1
             if idx % numOfSwitches == 0:
-                f.write(80*"-"+"\n")
+                f.write(80 * "-" + "\n")
 
 
 def getTimeTransistor_ONOFF(transistorList, numOfPeriod=1):
     result = {}
     for loop in range(numOfPeriod):
         for transistor in transistorList:
-            time_turned_on = round(loop*360 + transistor.time_turned_on_deg, 6)
-            time_turned_off = round(loop*360 + transistor.time_turned_off_deg, 6)
+            time_turned_on = round(loop * 360 + transistor.time_turned_on_deg, 6)
+            time_turned_off = round(loop * 360 + transistor.time_turned_off_deg, 6)
             result.update({time_turned_on:
                                str(getSignalAtTime(transistorList, time_turned_on))})
             result.update({time_turned_off:
@@ -368,9 +368,9 @@ def combineKeyIfTheValueSame(d):
 
 def visualCheck(transistorList, factor_a, numOfChoppers, numOfPeriods, fileName, show=0):
     visualCheck_items_list = [[] for _ in range(len(transistorList) + 1)]
-    for tick in range(0, numOfPeriods*36000, 5):
+    for tick in range(0, numOfPeriods * 36000, 5):
         tick = tick / 100
-        visualCheck_items_list[0].append(deg2rad(tick)*radians)
+        visualCheck_items_list[0].append(deg2rad(tick) * radians)
         signal = str(getSignalAtTime(transistorList, tick))
         signal_idx = 0
         while signal_idx < len(transistorList):
@@ -528,7 +528,7 @@ def main():
             # Factor_a
             # factor_a = float(input("Enter chopper on factor in %: "))
             try:
-                #factor_a = abs(float(values['VALUEofa']))
+                # factor_a = abs(float(values['VALUEofa']))
                 factor_a_list = [abs(float(_)) for _ in re.split(",| ", values['VALUEofa'])]
             except (AttributeError, ValueError, TypeError):
                 window['ERR1'].update(value="Error: Invalid value of number of chopper factor a!", visible=True)
@@ -653,7 +653,8 @@ def main():
                                 os.startfile(fileName_xlsx)
                     # Create and automatically open txt file
                     if values['OPENTEXT_SWEEP']:
-                        exportDictToText_Horizontal(cp_dict, fileName_text_slow, numOfPeriods, count_tc_pl, numOfChoppers, factor_a, deltaGamma)
+                        exportDictToText_Horizontal(cp_dict, fileName_text_slow, numOfPeriods, count_tc_pl,
+                                                    numOfChoppers, factor_a, deltaGamma)
                         if count_tc_pl == len(factor_a_list):
                             if sys.platform == "darwin":
                                 opener = "open"
@@ -663,7 +664,8 @@ def main():
 
                 # Create and automatically open timetable text
                 if values['OPENONOFFTIME']:
-                    exportDictToText_Vertical(time_dict_sorted, fileName_text, numOfPeriods, count_tc_pl, numOfChoppers, factor_a)
+                    exportDictToText_Vertical(time_dict_sorted, fileName_text, numOfPeriods, count_tc_pl, numOfChoppers,
+                                              factor_a)
                     if count_tc_pl == len(factor_a_list):
                         if sys.platform == "darwin":
                             opener = "open"
@@ -681,13 +683,13 @@ def main():
                     visualCheck(choppersList, factor_a, numOfChoppers, numOfPeriods, fileName, show)
 
 
-        #Features for debug and playing purposes
+        # Features for debug and playing purposes
 
-            # window['IN3'].update(visible=True)
-            # window['NOTE2'].update(visible=True)
-            # window['INPUT3'].update(visible=True)
-            # window['OK2'].update(visible=True)
-            # window['CHOICE2'].update(visible=True)
+        # window['IN3'].update(visible=True)
+        # window['NOTE2'].update(visible=True)
+        # window['INPUT3'].update(visible=True)
+        # window['OK2'].update(visible=True)
+        # window['CHOICE2'].update(visible=True)
 
         # Get signal at random times
         elif event == 'OK2':
