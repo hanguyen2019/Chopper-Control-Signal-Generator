@@ -586,7 +586,7 @@ def main():
             # File names
             # remove blank space in fileName and make it valid
             fileName = values['FILENAME']
-            if fileName.split("_")[1] == oldFileName:
+            if fileName.split("_")[1] == oldFileName or fileName =="Default_name":
                 # Add date to fileName
                 if len(factor_a_list) == 1:
                     fileName = str(date.today()) + "_" + str(numOfChoppers) + "CPs-" + \
