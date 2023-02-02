@@ -193,7 +193,7 @@ def getChopperList(numOfChoppers, time_diff_deg, time_is_on_deg,
                                               (cpIdx2 - 1) * time_diff_deg,
                                               time_is_on_deg))
             choppersList.insert(0, Transistor("chopper", "CP_L_" + str(cpIdx2),
-                                              (cpIdx2- 1) * time_diff_deg + time_is_on_deg + pauseTime_deg if
+                                              (cpIdx2 - 1) * time_diff_deg + time_is_on_deg + pauseTime_deg if
                                               time_is_on_deg != 0.000000
                                               else 0,
                                               360 - time_is_on_deg - pauseTime_deg * 2 if
@@ -301,7 +301,7 @@ def exportDictToText_Horizontal(mydict, textFileName, numOfPeriods, count, numOf
         f.write(f"Number of signal switches: {numOfSwitches} in a period.\n\n")
 
 
-def exportDictToText_Vertical(mydict, textFileName, numOfPeriods, count, numOfChopper, factor_a, stepTime=None):
+def exportDictToText_Vertical(mydict, textFileName, numOfPeriods, count, numOfChopper, factor_a, pauseTime, stepTime=None):
     fileName = str(textFileName)
     list_time_deg = list(mydict.keys())
     list_time_rad = ldeg2lrad(list_time_deg)
@@ -319,7 +319,8 @@ def exportDictToText_Vertical(mydict, textFileName, numOfPeriods, count, numOfCh
             f.write("\n")
         if count == 1:
             f.write(f"Number of choppers: {numOfChopper}\n"
-                    f"Signal is read from right to left. (e.g...CP_BL_1, CP_BH_1, CP_AL_1, CP_AH_1)\n")
+                    f"Signal is read from right to left. (e.g...CP_BL_1, CP_BH_1, CP_AL_1, CP_AH_1)\n"
+                    f"Pause time:{pauseTime} s\n")
         if stepTime is not None:
             f.write(f"Step time: {stepTime} grad\n")
         f.write(f"\nFactor a: {factor_a} %\n")
@@ -417,20 +418,20 @@ def main():
         [sg.Text("Number of period: ", key="Input", size=(25, 1)),
          sg.InputText(default_text=1, key="NUMOFPERIOD")],
         # [sg.Checkbox("Default name, eg: 8CPs-25%-4INVs.xlsx", default=True, key='DEFNAME')],
+        [sg.Text("Pause time between high and low transistor: ", key='PAUSETIMETXT', visible=True, size=(25, 2)),
+         sg.InputText(key='PAUSETIME_VALUE', visible=True, default_text=pauseTime_default)],
         [sg.Text("Default name\neg: 2022-12-01_8CPs-25%")],
         [sg.Button("Custom name for table", key="CUSTOMNAME")],
-        [sg.Text("Name for table: ", size=(25, 1), key='CUSTOMNAMETITLE'), sg.InputText(key='FILENAME', disabled=True)],
+        [sg.Text("Name for table: ", size=(25, 1), key='CUSTOMNAMETITLE'),
+         sg.InputText(key='FILENAME', disabled=True, default_text="Default_name")],
         [sg.Text("", size=(0, 1), key='ERR1', visible=False, text_color='#b30404')],
-        [sg.Text("Note: \nSupport only .xlsx extension!" +
-                 "\n" + str("Choppers' period = " + str(T_cp_sec_default) + " s as default."))],
+        [sg.Text(f"Note: Choppers' period = {T_cp_sec_default} s as default.")],
 
         # Advanced options
         [sg.Button('Show advanced options', key='BUTTONSHOW', visible=True)],
-        [sg.Text("Pause time between high and low transistor: ", key='PAUSETIMETXT', visible=False, size=(25, 2)),
-         sg.InputText(key='PAUSETIME_VALUE', visible=False, default_text=pauseTime_default)],
         [sg.Text("Choppers' period in sec: ", size=(25, 1), key='CPTText', visible=False),
          sg.InputText(key='CPPeriod', visible=False, default_text=T_cp_sec_default)],
-        [sg.Text("Delta gamma in degree: ", size=(25, 1), key='DELTAGAMMA', visible=False),
+        [sg.Text("Delta gamma in degree:\n(sweep method) ", size=(25, 2), key='DELTAGAMMA', visible=False),
          sg.InputText(key='DELTAGAMMA_VAL', visible=False, default_text=deltaGamma_default)],
         [sg.Text("Note: 0.144° corresponds to 2.5 MSPS for chopper (T=1e-3)", key='NOTEDELTAGAMMA', visible=False)],
         [sg.Text("", size=(0, 1), key='ERR3', visible=False, text_color='#b30404')],
@@ -465,6 +466,7 @@ def main():
 
     # Lock for custom name
     customName_locked = 0
+    debug_count = 0
 
     # Program runs and reacts with pressed buttons (events)
     while 1:
@@ -481,8 +483,8 @@ def main():
         # Advanced options
         elif event == 'BUTTONSHOW':
             window['BUTTONSHOW'].update(visible=False)
-            window['PAUSETIMETXT'].update(visible=True)
-            window['PAUSETIME_VALUE'].update(visible=True)
+            # window['PAUSETIMETXT'].update(visible=True)
+            # window['PAUSETIME_VALUE'].update(visible=True)
             window['BUTTONHIDE'].update(visible=True)
             window['CPTText'].update(visible=True)
             window['CPPeriod'].update(visible=True)
@@ -491,8 +493,8 @@ def main():
             window['NOTEDELTAGAMMA'].update(visible=True)
         elif event == 'BUTTONHIDE':
             window['BUTTONSHOW'].update(visible=True)
-            window['PAUSETIMETXT'].update(visible=False)
-            window['PAUSETIME_VALUE'].update(visible=False)
+            # window['PAUSETIMETXT'].update(visible=False)
+            # window['PAUSETIME_VALUE'].update(visible=False)
             window['BUTTONHIDE'].update(visible=False)
             window['CPTText'].update(visible=False)
             window['CPPeriod'].update(visible=False)
@@ -513,7 +515,9 @@ def main():
             customName_locked = 0
 
         # Creating the tables
+
         elif event == 'OK1':
+            debug_count += 1
             # NumOfChoppers
             # numOfChoppers = int(input("Enter number of choppers: "))
             try:
@@ -552,13 +556,6 @@ def main():
                 window['ERR3'].update(value="Error: Invalid value of choppers' period", visible=True)
                 sleep(0.5)
                 continue
-            # Pause time
-            try:
-                pauseTime_deg = sec2deg(float(values['PAUSETIME_VALUE']), T_cp_sec)
-            except (AttributeError, ValueError, TypeError, ValueError):
-                window['ERR3'].update(value="Error: Invalid value of pause time", visible=True)
-                sleep(0.5)
-                continue
             # Delta Gamma
             try:
                 deltaGamma = abs(float(values['DELTAGAMMA_VAL']))
@@ -568,6 +565,19 @@ def main():
                 continue
             # ENDS OF ADVANCED OPTIONS
 
+            # Pause time
+            try:
+                pauseTime = float(values['PAUSETIME_VALUE'])
+                pauseTime_deg = sec2deg(pauseTime, T_cp_sec)
+                if pauseTime_deg >= 360:
+                    raise ValueError
+            except (AttributeError, ValueError, TypeError, ValueError):
+                window['ERR3'].update(value="Error: Invalid value of pause time or pause time is too long", visible=True)
+                sleep(0.5)
+                continue
+
+
+
             # Remove error messages
             window['ERR1'].update(visible=False)
             window['ERR2'].update(visible=False)
@@ -575,8 +585,8 @@ def main():
 
             # File names
             # remove blank space in fileName and make it valid
-            fileName = values['FILENAME'].replace(" ", "")
-            if fileName == '' or fileName.split("_")[1] == oldFileName:
+            fileName = values['FILENAME']
+            if fileName.split("_")[1] == oldFileName:
                 # Add date to fileName
                 if len(factor_a_list) == 1:
                     fileName = str(date.today()) + "_" + str(numOfChoppers) + "CPs-" + \
@@ -613,7 +623,7 @@ def main():
                     choppersList = getChopperList(numOfChoppers, time_diff_deg, cp_time_is_on_deg, pauseTime_deg)
                     old_numOfChoppers = numOfChoppers
                     old_factor_a = factor_a
-                elif factor_a != old_factor_a:  # else update only the on time
+                else:  # else update only the on time
                     updateTimeIsOn(choppersList, cp_time_is_on_deg, pauseTime_deg)
                     old_factor_a = factor_a
 
@@ -665,7 +675,7 @@ def main():
                 # Create and automatically open timetable text
                 if values['OPENONOFFTIME']:
                     exportDictToText_Vertical(time_dict_sorted, fileName_text, numOfPeriods, count_tc_pl, numOfChoppers,
-                                              factor_a)
+                                              factor_a, pauseTime)
                     if count_tc_pl == len(factor_a_list):
                         if sys.platform == "darwin":
                             opener = "open"
