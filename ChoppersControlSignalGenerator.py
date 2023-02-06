@@ -1,3 +1,14 @@
+"""
+
+Usage:
+    ./ChoppersControlSignalGenerator.py
+
+Author:
+    Nam Ha Nguyen Mau 06.02.23
+    ha.nguyenmau.ee@gmail.com
+"""
+
+
 import os
 import random
 import subprocess
