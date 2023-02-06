@@ -234,7 +234,7 @@ def createDict(transistorsList, t, dt):
     result = {**dict_gamma, **dict_delta_gamma, **currentDict}
     return result
 
-
+# Not use anymore, because Mr. Dr. Spichartz doesn't want it
 def exportDictToExcel(dictList, numOfChoppers, factor, tableFileName):
     # https://xlsxwriter.readthedocs.io/example_pandas_table.html
 
@@ -391,7 +391,7 @@ def visualCheck(transistorList, factor_a, numOfChoppers, numOfPeriods, fileName,
 
     fig, axs = plt.subplots(len(transistorList), sharey="all", sharex="all")
 
-    if factor_a != 0:
+    if factor_a != 0:  # Get rid of annoying thing that inverts y-axis when a == 0
         plt.gca().invert_yaxis()
     idx_subplot = 0
     for idx in range(len(visualCheck_items_list) - 1, 0, -1):
@@ -587,8 +587,6 @@ def main():
                 sleep(0.5)
                 continue
 
-
-
             # Remove error messages
             window['ERR1'].update(visible=False)
             window['ERR2'].update(visible=False)
@@ -712,7 +710,7 @@ def main():
         # window['OK2'].update(visible=True)
         # window['CHOICE2'].update(visible=True)
 
-        # Get signal at random times
+        # Get signal at random times / Disabled
         elif event == 'OK2':
             if not values['CHOICE2']:
                 try:
@@ -732,26 +730,6 @@ def main():
 
         elif event == sg.WINDOW_CLOSED:
             break
-
-        # if input("Restart? [y]es or [n]o: ") == 'y':
-        # continue
-        # else:
-        # break
-        # choice = input("Choose 1 for checking when changes happen \n"
-        #               "Choose 2 for checking which IGBT are on at chosen time in second \n"
-        #               "Choose 3 to export data table to excel\n")
-        # choice = 3
-        # if choice == '1':
-        #    whenSignalsChanges_printOut(choppersList, numOfPeriod, T_cp_sec)
-        #    print(time_diff_deg)
-        #    print(cp_time_is_on_deg)
-        # elif choice == '2':
-        #    while 1:
-        #        try:
-        #            timeinSec = float(input("At (sec): "))
-        #        except:
-        #            break
-        #        getSignalAtTime_manual(choppersList, numOfPeriod, T_cp_sec, timeinSec)
 
 
 if __name__ == '__main__':
