@@ -410,6 +410,9 @@ def visualCheck(transistorList, factor_a, numOfChoppers, numOfPeriods, fileName,
     if show:
         plt.show()
 
+def dummyFunc()->str:
+    return "abc"
+
 
 def main():
     global choppersList, numOfChoppers, old_numOfChoppers, numOfInverters, T_cp_sec, deltaGamma, pauseTime, numOfPeriods
