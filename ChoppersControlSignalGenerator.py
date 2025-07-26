@@ -411,7 +411,7 @@ def visualCheck(transistorList, factor_a, numOfChoppers, numOfPeriods, fileName,
         plt.show()
 
 def dummyFunc()->str:
-    return "abc"
+    return "an lon"
 
 
 def main():
